@@ -1,0 +1,60 @@
+# Environment files
+*.env
+.env
+
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+*.pdb
+*.egg
+*.egg-info/
+dist/
+build/
+*.whl
+
+# Jupyter Notebooks
+.ipynb_checkpoints/
+
+# macOS
+.DS_Store
+
+# Logs
+*.log
+
+# Database
+init-db/
+db_data/
+
+# System files
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+
+# IDEs and editors
+.vscode/
+.idea/
+*.sublime-workspace
+*.sublime-project
+
+# Node.js
+node_modules/
+npm-debug.log
+yarn-error.log
+
+# Backup files
+*.bak
+*.swp
+*~
+
+# Compiled files
+*.o
+*.so
+*.a
+*.out
+
+# Other
+*.docx
+backend/database/db_config.sh
+backend/database/impact_statistics.ipynb
