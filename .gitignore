@@ -58,3 +58,4 @@ yarn-error.log
 *.docx
 backend/database/db_config.sh
 backend/database/impact_statistics.ipynb
+/src/chatbot/query_tools_chat.ipynb
