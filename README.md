@@ -43,3 +43,15 @@ This is a chatbot that uses an RDF-based semantic layer to transform user questi
     ├── old_partial_schema.sql
     └── populate_db.py
 ```
+## Current Agent Architecture
+
+![alt text](multiagents_sys.png)
+
+## Contact
+
+For any questions or feedback, please contact me (Taïsha Joseph) at taishajo@mit.edu.
+
+## Resources
+
+- [LangChain Academy](https://academy.langchain.com/) 
+- [Multi-Agent System with LangGraph](https://blog.futuresmart.ai/multi-agent-system-with-langgraph)
