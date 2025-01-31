@@ -242,7 +242,7 @@ builder.add_node("descendant_metadata_retriever", descendant_metadata_retriever_
 builder.add_node("data_summarizer", data_summarizer_node)
 builder.add_node("link_retriever", link_retriever_node)
 builder.add_node("FINISH", finish_node)
-builder.add_edge("supervisor", "FINISH")
+# builder.add_edge("supervisor", "FINISH")
     
 
 # Compile graph
