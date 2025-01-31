@@ -33,7 +33,10 @@ from dotenv import load_dotenv
 load_dotenv()
 
 # checkpoint
-memory = SqliteSaver.from_conn_string(":memory:")
+import sqlite3
+# In memory
+conn = sqlite3.connect(":memory:", check_same_thread = False)
+memory = SqliteSaver(conn)
 
 # Define router type for structured output
 
@@ -197,7 +200,7 @@ def basic_sample_info_retriever_node(state: MessagesState) -> Command[Literal["s
         goto="supervisor",
     )
 
-def descendant_metadata_retriever_node(state: MessagesState) -> Command[Literal["supervisor"]]:
+def descendant_metadata_retriever_node(state: MessagesState) -> Command[Literal["data_summarizer"]]:
     result = descendant_metadata_retriever.invoke(state)
     return Command(
         update={
@@ -205,7 +208,7 @@ def descendant_metadata_retriever_node(state: MessagesState) -> Command[Literal[
                 HumanMessage(content=result["messages"][-1].content, name="descendant_metadata_retriever")
             ]
         },
-        goto="supervisor",
+        goto="data_summarizer",
     )
 
 def data_summarizer_node(state: MessagesState) -> Command[Literal["supervisor"]]:
@@ -232,7 +235,10 @@ def link_retriever_node(state: MessagesState) -> Command[Literal["supervisor"]]:
 
 def finish_node(state: MessagesState) -> Command[Literal["__end__"]]:
     goto = END
-    return Command(goto=goto)
+    return Command(
+        update = {"messages": state["messages"]},
+        goto=goto
+        )
 
 builder = StateGraph(MessagesState)
 builder.add_edge(START, "supervisor")
@@ -242,8 +248,7 @@ builder.add_node("descendant_metadata_retriever", descendant_metadata_retriever_
 builder.add_node("data_summarizer", data_summarizer_node)
 builder.add_node("link_retriever", link_retriever_node)
 builder.add_node("FINISH", finish_node)
-# builder.add_edge("supervisor", "FINISH")
     
 
 # Compile graph
-graph = builder.compile()
+graph = builder.compile(checkpointer=memory)
