@@ -12,6 +12,16 @@ from langgraph.checkpoint.sqlite import SqliteSaver
 import sys
 import os
 
+from studio.prompts import (
+    # MEMBERS,
+    # OPTIONS,
+    SYS_MSG_SUPERVISOR,
+    SYS_MSG_TOOLSET_1,
+    SYS_MSG_TOOLSET_2,
+    SYS_MSG_TOOLSET_3,
+    SYS_MSG_LINK_ADDER
+)
+
 # Add the project root directory to the Python path
 project_root = os.path.abspath(os.path.join(os.path.dirname(__file__), '../../..'))
 sys.path.append(project_root)
@@ -25,33 +35,22 @@ load_dotenv()
 # checkpoint
 memory = SqliteSaver.from_conn_string(":memory:")
 
-members = ["link_retriever", "data_summarizer", "descendant_metadata_retriever", "basic_sample_info_retriever"]
-options = members + ["FINISH"]
-
-# System messages
-sys_msg = "You are a supervisor tasked with managing a conversation between the"
-f"following workers: {members}."
-"Given the following user request,"
-" respond with the worker to act next. Each worker will perform a"
-" task and respond with their results and status. "
-" When finished with all tasks, respond with FINISH."
 # Define router type for structured output
+
 class Router(TypedDict):
     """Worker to route to next. If no workers needed, route to FINISH."""
     next: Literal["link_retriever", "data_summarizer", "descendant_metadata_retriever", "basic_sample_info_retriever","FINISH"]
-    # messages: Annotated[Sequence[BaseMessage], add_messages]
 
 
 # Create supervisor node function
-def supervisor_node(state: MessagesState) -> Command[Literal["link_retriever", "data_summarizer", "descendant_metadata_retriever", "basic_sample_info_retriever", "FINISH", "_end_"]]:
-    llm = ChatOpenAI(model="gpt-4o", temperature=0)
+def supervisor_node(state: MessagesState) -> Command[Literal["link_retriever", "data_summarizer", "descendant_metadata_retriever", "basic_sample_info_retriever", "FINISH", '__end__']]:
     messages = [
-        {"role": "system", "content": sys_msg},
+        {"role": "system", "content": SYS_MSG_SUPERVISOR},
     ] + state["messages"]
     response = llm.with_structured_output(Router).invoke(messages)
     goto = response["next"]
     print(f"Next Worker: {goto}")
-    if goto == "FINISH":
+    if goto ==  "FINISH":
         goto = END
     return Command(goto=goto)
 
@@ -179,26 +178,13 @@ llm = ChatOpenAI(model="gpt-4o", temperature=0)
 
 # Toolset 1: Retrieve sample name and information
 # sys_msg for toolset 1
-msg1 = "You are a helpful assistant tasked with retrieving and summarizing information about samples from a database that stores metadata about research samples and data according to FAIR data principles and NIH standards. You will be given a sample UID and you will use the tools provided to retrieve the relevant information. Depending on the user query, you will choose to either retrieve the sample name or the sample information. If you are asked for the sample name, use the retrieve_sample_name tool. If you are asked for information about a sample, use the retrieve_sample_info tool. You should use the answer given by the tools utilized unless the query returns an error or empty list. For instance, when asked for the name of a sample, you should provide the name given by the database after running the appropriate query unless the query returns an error or empty list."
 
-
-# sys_msg for toolset 2
-msg2 = "You are a helpful assistant tasked with summarizing information about children, descendants, and associated metadata for a given sample from a database that stores metadata about research samples and data according to FAIR data principles and NIH standards. You will be given a sample UID and you will use the tools provided to retrieve the relevant information. Depending on the user query, you will choose to either retrieve the children of that sample, all descendants of the sample, and/or metadata about the descendants of that sample. You should use the answer given by the database unless the query returns an error or empty list."
-
-
-# sys_msg for toolset 3
-msg3 = "You are a helpful assistant tasked with summarizing information about samples and their associated metadata from a database that stores metadata about research samples and data according to FAIR data principles and NIH standards. You will be given a sample UID and you will use the tools provided to retrieve the relevant information. Depending on the user query, you will choose to either summarize the sample information or the metadata for all or a subset of descendants of that sample. For instance, if the user asks for only the tissue descendants of a sample, you should use the filter parameter in the summarize_all_metadata_info tool to retrieve only the metadata information for the descendants that match the tissue pattern. If the user only asks for the sample information, you should use the summarize_sample_info tool. You should use the answer given by the database unless the query returns an error or empty list."
-
-
-msg4 = "You are a helpful assistant tasked with adding links to sample and protocol uids from a database." 
-"You will be given a sample UID and you will use the tools provided to create the links based on the user query." 
-"You will add the links to the message received from the previous worker and return the updated message."
 
 ## build agents
-basic_sample_info_retriever = create_agent(llm, toolset1, msg1)
-descendant_metadata_retriever = create_agent(llm, toolset2, msg2)
-data_summarizer = create_agent(llm, toolset3, msg3)
-link_retriever = create_agent(llm, toolset4, msg4)
+basic_sample_info_retriever = create_agent(llm, toolset1, SYS_MSG_TOOLSET_1)
+descendant_metadata_retriever = create_agent(llm, toolset2, SYS_MSG_TOOLSET_2)
+data_summarizer = create_agent(llm, toolset3, SYS_MSG_TOOLSET_3)
+link_retriever = create_agent(llm, toolset4, SYS_MSG_LINK_ADDER)
 
 def basic_sample_info_retriever_node(state: MessagesState) -> Command[Literal["supervisor"]]:
     result = basic_sample_info_retriever.invoke(state)
@@ -244,6 +230,10 @@ def link_retriever_node(state: MessagesState) -> Command[Literal["supervisor"]]:
         goto="supervisor",
     )
 
+def finish_node(state: MessagesState) -> Command[Literal["__end__"]]:
+    goto = END
+    return Command(goto=goto)
+
 builder = StateGraph(MessagesState)
 builder.add_edge(START, "supervisor")
 builder.add_node("supervisor", supervisor_node)
@@ -251,9 +241,9 @@ builder.add_node("basic_sample_info_retriever", basic_sample_info_retriever_node
 builder.add_node("descendant_metadata_retriever", descendant_metadata_retriever_node)
 builder.add_node("data_summarizer", data_summarizer_node)
 builder.add_node("link_retriever", link_retriever_node)
-# builder.add_edge("supervisor", END)
-# builder.add_edge("link_retriever", END)
+builder.add_node("FINISH", finish_node)
+builder.add_edge("supervisor", "FINISH")
     
 
 # Compile graph
-graph = builder.compile(checkpointer=memory)
+graph = builder.compile()
