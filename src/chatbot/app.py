@@ -29,7 +29,8 @@ def run_agent_chatbot():
 
         # Create a HumanMessage and invoke the graph
         messages = [HumanMessage(content=user_input)]
-        result = graph.invoke({"messages": messages})
+        config={"configurable":  {"thread_id": "1"}}
+        result = graph.invoke({"messages": messages}, config)
 
         # Extract and display AI response
         if "messages" in result and len(result["messages"]) > 1:

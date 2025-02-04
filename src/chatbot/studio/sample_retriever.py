@@ -7,7 +7,7 @@ from typing import List
 from typing_extensions import Annotated, TypedDict, Sequence, Literal
 from langgraph.graph.message import add_messages
 from langgraph.types import Command
-from pydantic import BaseModel
+# from pydantic import BaseModel, ConfigDict
 from langgraph.checkpoint.sqlite import SqliteSaver
 import sys
 import os
@@ -26,7 +26,9 @@ from studio.prompts import (
 project_root = os.path.abspath(os.path.join(os.path.dirname(__file__), '../../..'))
 sys.path.append(project_root)
 
-from backend.Tools.services.sample_service import get_sample_name, fetch_protocol, retrieve_sample_info, fetchChildren, fetch_all_descendants, fetchAllMetadata, add_links
+from backend.Tools.services.sample_service import get_sample_name, fetch_protocol, retrieve_sample_info, fetchChildren, fetch_all_descendants, add_links
+
+from backend.Tools.services.llm_service import summarize_sample_info, summarize_all_metadata_info
 
 # import env variables
 from dotenv import load_dotenv
@@ -44,18 +46,39 @@ class Router(TypedDict):
     """Worker to route to next. If no workers needed, route to FINISH."""
     next: Literal["link_retriever", "data_summarizer", "descendant_metadata_retriever", "basic_sample_info_retriever","FINISH"]
 
-
-# Create supervisor node function
-def supervisor_node(state: MessagesState) -> Command[Literal["link_retriever", "data_summarizer", "descendant_metadata_retriever", "basic_sample_info_retriever", "FINISH", '__end__']]:
+def supervisor_node(state: MessagesState) -> Command[Literal["link_retriever", "data_summarizer", "descendant_metadata_retriever", "basic_sample_info_retriever","FINISH"]]:
+    # Step 1: Aggregate responses from all agents
+    aggregated_agent_responses = ""
+    for msg in state["messages"]:
+        # If the message has a 'name' attribute, include it in the aggregation.
+        agent_name = getattr(msg, "name", None)
+        if agent_name:
+            aggregated_agent_responses += f"Agent '{agent_name}' said: {msg.content}\n"
+        else:
+            aggregated_agent_responses += f"{msg.content}\n"
+    
+    # Step 2: Create a prompt that instructs the LLM to summarize all responses
+    prompt = (
+        "Please provide a comprehensive summary of the following agent responses:\n"
+        f"{aggregated_agent_responses}\n"
+        "Based on the original user request, decide which worker should act next. "
+        "If the query is ambiguous or requires more details, ask a clarifying question instead of proceeding."
+    )
+    
+    # Step 3: Build the messages list with the supervisor system prompt and the aggregated prompt
     messages = [
         {"role": "system", "content": SYS_MSG_SUPERVISOR},
+        {"role": "user", "content": prompt},
     ] + state["messages"]
+    
+    # Step 4: Invoke the LLM with the structured output to get the next command and summary
     response = llm.with_structured_output(Router).invoke(messages)
     goto = response["next"]
     print(f"Next Worker: {goto}")
-    if goto ==  "FINISH":
+    if goto == "FINISH":
         goto = END
     return Command(goto=goto)
+
 
 ########################################################
 # Create agents
@@ -104,69 +127,10 @@ def create_worker(llm, tools, msg):
 # Tools
 ########################################################
 
-class SummarizedOutput(BaseModel):
-    summary: str
-    metadata: dict
-
-def summarize_sample_info(sample_uid: str) -> SummarizedOutput:
-   """LLM call to summarize sample information
-
-   Args:
-      sample_uid (str): sample UID that will be used to retrieve sample information from the database
-
-   Returns:
-      (SummarizedOutput): summary of sample information
-   """
-   try:
-       llm = ChatOpenAI(model="gpt-4o-mini", temperature=0.1)
-       sample_metadata = retrieve_sample_info(sample_uid)
-       if not sample_metadata:
-           raise ValueError("No sample metadata found.")
-       prompt = (
-           "Please provide a concise and clear summary in a few sentences based solely on the data provided "
-           f"in the following dictionary: {sample_metadata[0]}. Avoid repeating the data verbatim and do not "
-           "introduce additional information. If any information is unclear, feel free to ask the user for "
-           "clarification. If the requested information cannot be retrieved, respond with: "
-           "'I'm sorry, I couldn't find the information you're looking for.'"
-       )
-       messages = [{"role": "user", "content": prompt}]
-       result = llm.with_structured_output(SummarizedOutput).invoke(messages)
-       return result
-   except Exception as e:
-       return f"An error occurred while summarizing sample information: {str(e)}"
-
-def summarize_all_metadata_info(sample_uid: str, filter: List[str] = None) -> SummarizedOutput:
-   """LLM call to summarize metadata information for all descendants of a sample
-
-   Args:
-      sample_uid (str): sample UID that will be used to retrieve metadata information from the database for all descendants of the sample
-      filter (List[str], optional): list of uid patterns to filter the metadata information by to retrieve only the metadata information for the descendants that match the patterns
-   
-   Returns:
-      (SummarizedOutput): summary of metadata information
-   """
-   try:
-       llm = ChatOpenAI(model="gpt-4o", temperature=0.1)
-       all_metadata = fetchAllMetadata(sample_uid, filter)
-       if not all_metadata:
-           raise ValueError("No metadata found for the given sample UID.")
-       prompt = (
-           "Please provide a concise and clear summary in a few sentences based solely on the data provided "
-           f"in the following dictionary: {all_metadata}. Avoid repeating the data verbatim and do not "
-           "introduce additional information. If any information is unclear, feel free to ask the user for "
-           "clarification. If the requested information cannot be retrieved, respond with: "
-           "'I'm sorry, I couldn't find the information you're looking for.'"
-       )
-       messages = [{"role": "user", "content": prompt}]
-       result = llm.with_structured_output(SummarizedOutput).invoke(messages)
-       return result
-   except Exception as e:
-       return f"An error occurred while summarizing metadata information: {str(e)}"
-
 
 toolset1 = [get_sample_name, retrieve_sample_info, fetch_protocol]
 
-toolset2 = [fetchChildren, fetch_all_descendants, fetchAllMetadata]
+toolset2 = [fetchChildren, fetch_all_descendants]#fetchAllMetadata
 
 toolset3 = [summarize_sample_info, summarize_all_metadata_info]
 
@@ -200,7 +164,7 @@ def basic_sample_info_retriever_node(state: MessagesState) -> Command[Literal["s
         goto="supervisor",
     )
 
-def descendant_metadata_retriever_node(state: MessagesState) -> Command[Literal["data_summarizer"]]:
+def descendant_metadata_retriever_node(state: MessagesState) -> Command[Literal["supervisor"]]:
     result = descendant_metadata_retriever.invoke(state)
     return Command(
         update={
@@ -208,7 +172,7 @@ def descendant_metadata_retriever_node(state: MessagesState) -> Command[Literal[
                 HumanMessage(content=result["messages"][-1].content, name="descendant_metadata_retriever")
             ]
         },
-        goto="data_summarizer",
+        goto="supervisor",
     )
 
 def data_summarizer_node(state: MessagesState) -> Command[Literal["supervisor"]]:
@@ -233,12 +197,14 @@ def link_retriever_node(state: MessagesState) -> Command[Literal["supervisor"]]:
         goto="supervisor",
     )
 
+
 def finish_node(state: MessagesState) -> Command[Literal["__end__"]]:
     goto = END
     return Command(
         update = {"messages": state["messages"]},
         goto=goto
         )
+    #                update={"messages": [HumanMessage(content="Thank you for using NExtSEEK-Chat! Please visit our website (https://nextseek.mit.edu/) for more information. Have a great day!", name="FINISH")]})
 
 builder = StateGraph(MessagesState)
 builder.add_edge(START, "supervisor")
@@ -248,7 +214,6 @@ builder.add_node("descendant_metadata_retriever", descendant_metadata_retriever_
 builder.add_node("data_summarizer", data_summarizer_node)
 builder.add_node("link_retriever", link_retriever_node)
 builder.add_node("FINISH", finish_node)
-    
 
 # Compile graph
 graph = builder.compile(checkpointer=memory)
