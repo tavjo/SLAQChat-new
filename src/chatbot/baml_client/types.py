@@ -44,3 +44,9 @@ class Resume(BaseModel):
     email: str
     experience: List[str]
     skills: List[str]
+
+class Validator(BaseModel):
+    Valid: bool
+    Clarifying_Question: str
+    Metadata: str
+    Next_worker: str

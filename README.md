@@ -22,7 +22,7 @@ This chatbot is designed to be modular and extensible to support increasingly mo
 
 This architecture is represented graphically in the following figure:
 
-![alt text](multiagents_architecture.png)
+![alt text](multiagents_architecture2.png)
 
 ## Project Structure
 

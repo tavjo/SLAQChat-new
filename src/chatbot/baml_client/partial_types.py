@@ -39,3 +39,9 @@ class Resume(BaseModel):
     email: Optional[str] = None
     experience: List[Optional[str]]
     skills: List[Optional[str]]
+
+class Validator(BaseModel):
+    Valid: Optional[bool] = None
+    Clarifying_Question: Optional[str] = None
+    Metadata: Optional[str] = None
+    Next_worker: Optional[str] = None

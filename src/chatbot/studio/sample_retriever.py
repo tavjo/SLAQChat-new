@@ -11,15 +11,19 @@ from langgraph.types import Command
 from langgraph.checkpoint.sqlite import SqliteSaver
 import sys
 import os
+import baml_client as baml
 
 from studio.prompts import (
-    # MEMBERS,
-    # OPTIONS,
+    MEMBERS,
+    OPTIONS,
+    WORKERS,
     SYS_MSG_SUPERVISOR,
     SYS_MSG_TOOLSET_1,
     SYS_MSG_TOOLSET_2,
     SYS_MSG_TOOLSET_3,
-    SYS_MSG_LINK_ADDER
+    SYS_MSG_LINK_ADDER,
+    SYS_MSG_RESPONDER,
+    SYS_MSG_VALIDATOR
 )
 
 # Add the project root directory to the Python path
@@ -28,7 +32,7 @@ sys.path.append(project_root)
 
 from backend.Tools.services.sample_service import get_sample_name, fetch_protocol, retrieve_sample_info, fetchChildren, fetch_all_descendants, add_links
 
-from backend.Tools.services.llm_service import summarize_sample_info, summarize_all_metadata_info
+from backend.Tools.services.llm_service import summarize_sample_info
 
 # import env variables
 from dotenv import load_dotenv
@@ -44,9 +48,9 @@ memory = SqliteSaver(conn)
 
 class Router(TypedDict):
     """Worker to route to next. If no workers needed, route to FINISH."""
-    next: Literal["link_retriever", "data_summarizer", "descendant_metadata_retriever", "basic_sample_info_retriever","FINISH"]
+    next: Literal["link_retriever", "descendant_metadata_retriever", "basic_sample_info_retriever","responder"]
 
-def supervisor_node(state: MessagesState) -> Command[Literal["link_retriever", "data_summarizer", "descendant_metadata_retriever", "basic_sample_info_retriever","FINISH"]]:
+def supervisor_node(state: MessagesState) -> Command[Literal["link_retriever", "descendant_metadata_retriever", "basic_sample_info_retriever","responder"]]:
     # Step 1: Aggregate responses from all agents
     aggregated_agent_responses = ""
     for msg in state["messages"]:
@@ -75,8 +79,6 @@ def supervisor_node(state: MessagesState) -> Command[Literal["link_retriever", "
     response = llm.with_structured_output(Router).invoke(messages)
     goto = response["next"]
     print(f"Next Worker: {goto}")
-    if goto == "FINISH":
-        goto = END
     return Command(goto=goto)
 
 
@@ -110,7 +112,7 @@ def create_agent(llm, tools, msg):
 def create_worker(llm, tools, msg):
     llm_with_tools = llm.bind_tools(tools)
     def chatbot(state: AgentState):
-        return {"messages": [llm_with_tools.invoke(state["messages"] + [{"role": "system", "content": msg}])]}
+        return {"messages": [llm_with_tools.invoke(state["messages"] + [{"role": "system", "content": msg}])]} 
 
     graph_builder = StateGraph(AgentState)
     graph_builder.add_node("agent", chatbot)
@@ -132,7 +134,7 @@ toolset1 = [get_sample_name, retrieve_sample_info, fetch_protocol]
 
 toolset2 = [fetchChildren, fetch_all_descendants]#fetchAllMetadata
 
-toolset3 = [summarize_sample_info, summarize_all_metadata_info]
+toolset3 = [summarize_sample_info]
 
 toolset4 = [add_links]
 
@@ -175,7 +177,7 @@ def descendant_metadata_retriever_node(state: MessagesState) -> Command[Literal[
         goto="supervisor",
     )
 
-def data_summarizer_node(state: MessagesState) -> Command[Literal["supervisor"]]:
+def data_summarizer_node(state: MessagesState) -> Command[Literal["responder"]]:
     result = data_summarizer.invoke(state)
     return Command(
         update={
@@ -183,7 +185,7 @@ def data_summarizer_node(state: MessagesState) -> Command[Literal["supervisor"]]
                 HumanMessage(content=result["messages"][-1].content, name="data_summarizer")
             ]
         },
-        goto="supervisor",
+        goto="responder",
     )
 
 def link_retriever_node(state: MessagesState) -> Command[Literal["supervisor"]]:
@@ -197,14 +199,55 @@ def link_retriever_node(state: MessagesState) -> Command[Literal["supervisor"]]:
         goto="supervisor",
     )
 
+class postRouter(TypedDict):
+    """Worker to route to next. If no workers needed, route to FINISH."""
+    next: Literal["validator","data_summarizer","FINISH"]
+
+def responder_node(state: MessagesState) -> Command[Literal["validator","data_summarizer","FINISH"]]:
+    llm = ChatOpenAI(model="gpt-4o")
+    # Aggregate the content of each HumanMessage into a single string
+    aggregated_messages = "\n".join([msg.content for msg in state["messages"]])
+    messages = [
+        {"role": "system", "content": SYS_MSG_RESPONDER},
+        {"role": "user", "content": aggregated_messages},
+    ] + state["messages"]
+    
+    # Step 4: Invoke the LLM with the structured output to get the next command and summary
+    response = llm.with_structured_output(postRouter).invoke(messages)
+    goto = response["next"]
+    print(f"Next Worker: {goto}")
+    return Command(goto=goto)
+
+def validator_node(state: AgentState) -> Command[Literal["responder"]]:
+    llm = ChatOpenAI(model="gpt-4o")
+    # Aggregate the content of each HumanMessage into a single string
+    aggregated_messages = "\n".join([msg.content for msg in state["messages"]])
+    print(aggregated_messages)
+    messages = [
+        {"role": "system", "content": SYS_MSG_VALIDATOR},
+        {"role": "user", "content": aggregated_messages},
+    ]
+    # Step 4: Invoke the LLM with the structured output to get the next command and summary
+    response = llm.invoke(messages)
+    # new_aggregate = "\n".join([msg.content for msg in response["messages"]])
+    if response["Valid"]:
+        new_aggregate = "\n".join(response["Metadata"])
+    else:
+        new_aggregate = response["Clarifying_Question"]
+    return Command(
+        update={
+            "messages": [
+                HumanMessage(content=new_aggregate, name="validator")
+            ]
+        },
+        goto="responder",
+    )
 
 def finish_node(state: MessagesState) -> Command[Literal["__end__"]]:
+    messages = state["messages"]
+    print(messages)
     goto = END
-    return Command(
-        update = {"messages": state["messages"]},
-        goto=goto
-        )
-    #                update={"messages": [HumanMessage(content="Thank you for using NExtSEEK-Chat! Please visit our website (https://nextseek.mit.edu/) for more information. Have a great day!", name="FINISH")]})
+    return Command(update={"messages": state["messages"]},goto=goto)    
 
 builder = StateGraph(MessagesState)
 builder.add_edge(START, "supervisor")
@@ -213,6 +256,8 @@ builder.add_node("basic_sample_info_retriever", basic_sample_info_retriever_node
 builder.add_node("descendant_metadata_retriever", descendant_metadata_retriever_node)
 builder.add_node("data_summarizer", data_summarizer_node)
 builder.add_node("link_retriever", link_retriever_node)
+builder.add_node("validator", validator_node)
+builder.add_node("responder", responder_node)
 builder.add_node("FINISH", finish_node)
 
 # Compile graph

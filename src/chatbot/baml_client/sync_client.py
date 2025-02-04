@@ -70,6 +70,29 @@ class BamlSyncClient:
       )
       return cast(types.Resume, raw.cast_to(types, types, partial_types, False))
     
+    def ValidateResponse(
+        self,
+        response: str,
+        baml_options: BamlCallOptions = {},
+    ) -> types.Validator:
+      __tb__ = baml_options.get("tb", None)
+      if __tb__ is not None:
+        tb = __tb__._tb # type: ignore (we know how to use this private attribute)
+      else:
+        tb = None
+      __cr__ = baml_options.get("client_registry", None)
+
+      raw = self.__runtime.call_function_sync(
+        "ValidateResponse",
+        {
+          "response": response,
+        },
+        self.__ctx_manager.get(),
+        tb,
+        __cr__,
+      )
+      return cast(types.Validator, raw.cast_to(types, types, partial_types, False))
+    
 
 
 
@@ -109,6 +132,36 @@ class BamlStreamClient:
         raw,
         lambda x: cast(partial_types.Resume, x.cast_to(types, types, partial_types, True)),
         lambda x: cast(types.Resume, x.cast_to(types, types, partial_types, False)),
+        self.__ctx_manager.get(),
+      )
+    
+    def ValidateResponse(
+        self,
+        response: str,
+        baml_options: BamlCallOptions = {},
+    ) -> baml_py.BamlSyncStream[partial_types.Validator, types.Validator]:
+      __tb__ = baml_options.get("tb", None)
+      if __tb__ is not None:
+        tb = __tb__._tb # type: ignore (we know how to use this private attribute)
+      else:
+        tb = None
+      __cr__ = baml_options.get("client_registry", None)
+
+      raw = self.__runtime.stream_function_sync(
+        "ValidateResponse",
+        {
+          "response": response,
+        },
+        None,
+        self.__ctx_manager.get(),
+        tb,
+        __cr__,
+      )
+
+      return baml_py.BamlSyncStream[partial_types.Validator, types.Validator](
+        raw,
+        lambda x: cast(partial_types.Validator, x.cast_to(types, types, partial_types, True)),
+        lambda x: cast(types.Validator, x.cast_to(types, types, partial_types, False)),
         self.__ctx_manager.get(),
       )
     

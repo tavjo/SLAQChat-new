@@ -444,7 +444,7 @@ DROP TABLE IF EXISTS `assay_assets`;
 /*!40101 SET @saved_cs_client     = @@character_set_client */;
 /*!50503 SET character_set_client = utf8mb4 */;
 CREATE TABLE `assay_assets` (
-  `id` int(11) NOT NULL AUTO_INCREMENT,
+  `id` int(11) NOT NULL AUTO_INCREMENT
   `assay_id` int(11) DEFAULT NULL,
   `asset_id` int(11) DEFAULT NULL,
   `version` int(11) DEFAULT NULL,
