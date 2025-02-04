@@ -93,10 +93,6 @@ backend
 ├── __init__.py
 └── database
     ├── __init__.py
-    ├── __pycache__
-    │   ├── models.cpython-312.pyc
-    │   └── populate_db.cpython-312.pyc
-    ├── db_config.sh
     ├── getdbSchema.sh
     ├── impact_statistics.ipynb
     ├── mockdb_test.ipynb
