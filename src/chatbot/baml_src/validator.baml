@@ -2,15 +2,16 @@
 class Validator {
     Valid bool
     Clarifying_Question string
-    Metadata string
+    originalMessage string
     Next_worker string
+    name string
 }
 
 // Create a function to validate the response from the responder.
 function ValidateResponse(response: string) -> Validator {
   client "openai/gpt-4o" // Set OPENAI_API_KEY to use this client.
   prompt #"
-    Validate the response from the responder. The next worker should always be the 'responder' unless otherwise specified in the response. Return the metadata in the response as a string.
+    Validate the response from the responder. The next worker should always be the 'responder' unless otherwise specified in the response. Return the original message (response) as a string. The name should be the name of the current worker: 'validator'
     {{ response }}
 
     {{ ctx.output_format }}

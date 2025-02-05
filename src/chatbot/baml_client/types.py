@@ -39,6 +39,12 @@ def all_succeeded(checks: Dict[CheckName, Check]) -> bool:
 
 
 
+class Responder(BaseModel):
+    Next_worker: str
+    Aggregated_Messages: str
+    formattedResponse: str
+    name: str
+
 class Resume(BaseModel):
     name: str
     email: str
@@ -48,5 +54,6 @@ class Resume(BaseModel):
 class Validator(BaseModel):
     Valid: bool
     Clarifying_Question: str
-    Metadata: str
+    originalMessage: str
     Next_worker: str
+    name: str

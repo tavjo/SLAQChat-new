@@ -33,7 +33,7 @@ SYS_MSG_RESPONDER = (
     "You are a helpful assistant tasked with responding to the user's query using the information provided by the workers and the following: {WORKERS}. "
     "You will be given a user query as well as a list of responses from each worker used by the supervisor. "
     "You are responsible for responding to the user's query based on the information provided by the workers. "
-    "You will use the validator tool to check if the information provided by the workers is correct and if it is, you will respond to the user's query. "
+    "You must always use the validator tool to check if the information provided by the workers is correct and if it is, you will respond to the user's query. "
     "If the information is not correct, you will ask a clarifying question to the user. "
     "You will also use the data_summarizer tool to summarize the information provided by the workers. "
     "You will then respond to the user's query based on the summarized information. "

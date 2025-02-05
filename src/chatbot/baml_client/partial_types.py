@@ -34,6 +34,12 @@ class StreamState(BaseModel, Generic[T]):
     state: Literal["Pending", "Incomplete", "Complete"]
 
 
+class Responder(BaseModel):
+    Next_worker: Optional[str] = None
+    Aggregated_Messages: Optional[str] = None
+    formattedResponse: Optional[str] = None
+    name: Optional[str] = None
+
 class Resume(BaseModel):
     name: Optional[str] = None
     email: Optional[str] = None
@@ -43,5 +49,6 @@ class Resume(BaseModel):
 class Validator(BaseModel):
     Valid: Optional[bool] = None
     Clarifying_Question: Optional[str] = None
-    Metadata: Optional[str] = None
+    originalMessage: Optional[str] = None
     Next_worker: Optional[str] = None
+    name: Optional[str] = None

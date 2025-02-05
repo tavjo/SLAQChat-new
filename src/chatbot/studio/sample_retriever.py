@@ -11,7 +11,7 @@ from langgraph.types import Command
 from langgraph.checkpoint.sqlite import SqliteSaver
 import sys
 import os
-import baml_client as baml
+from baml_client import b as baml
 
 from studio.prompts import (
     MEMBERS,
@@ -38,6 +38,7 @@ from backend.Tools.services.llm_service import summarize_sample_info
 from dotenv import load_dotenv
 load_dotenv()
 
+os.environ["OPENAI_API_KEY"] = os.getenv("OPENAI_API_KEY")
 # checkpoint
 import sqlite3
 # In memory
@@ -204,43 +205,55 @@ class postRouter(TypedDict):
     next: Literal["validator","data_summarizer","FINISH"]
 
 def responder_node(state: MessagesState) -> Command[Literal["validator","data_summarizer","FINISH"]]:
-    llm = ChatOpenAI(model="gpt-4o")
+    # llm = ChatOpenAI(model="gpt-4o")
     # Aggregate the content of each HumanMessage into a single string
     aggregated_messages = "\n".join([msg.content for msg in state["messages"]])
-    messages = [
-        {"role": "system", "content": SYS_MSG_RESPONDER},
-        {"role": "user", "content": aggregated_messages},
-    ] + state["messages"]
+    # messages = [
+    #     {"role": "system", "content": SYS_MSG_RESPONDER},
+    #     {"role": "user", "content": aggregated_messages},
+    # ] + state["messages"]
     
     # Step 4: Invoke the LLM with the structured output to get the next command and summary
-    response = llm.with_structured_output(postRouter).invoke(messages)
-    goto = response["next"]
+    # response = llm.with_structured_output(postRouter).invoke(messages)
+    response = baml.Respond(aggregated_messages)
+    goto = response.Next_worker
     print(f"Next Worker: {goto}")
-    return Command(goto=goto)
+    if goto == "FINISH":
+        return Command(
+            update={
+                "messages": [
+                HumanMessage(content=response.formattedResponse)
+            ]
+        },
+        goto=goto)
+    else:
+        return Command(goto=goto)
 
 def validator_node(state: AgentState) -> Command[Literal["responder"]]:
-    llm = ChatOpenAI(model="gpt-4o")
-    # Aggregate the content of each HumanMessage into a single string
+    # llm = ChatOpenAI(model="gpt-4o")
+    # # Aggregate the content of each HumanMessage into a single string
     aggregated_messages = "\n".join([msg.content for msg in state["messages"]])
-    print(aggregated_messages)
-    messages = [
-        {"role": "system", "content": SYS_MSG_VALIDATOR},
-        {"role": "user", "content": aggregated_messages},
-    ]
-    # Step 4: Invoke the LLM with the structured output to get the next command and summary
-    response = llm.invoke(messages)
+    # print(aggregated_messages)
+    # messages = [
+    #     {"role": "system", "content": SYS_MSG_VALIDATOR},
+    #     {"role": "user", "content": aggregated_messages},
+    # ]
+    # # Step 4: Invoke the LLM with the structured output to get the next command and summary
+    # response = llm.invoke(messages)
+    response = baml.ValidateResponse(aggregated_messages)
+    goto = response.Next_worker
     # new_aggregate = "\n".join([msg.content for msg in response["messages"]])
-    if response["Valid"]:
-        new_aggregate = "\n".join(response["Metadata"])
+    if response.Valid:
+        new_aggregate = response.Summary + "\n" + response.Metadata
     else:
-        new_aggregate = response["Clarifying_Question"]
+        new_aggregate = response.Clarifying_Question
     return Command(
         update={
             "messages": [
-                HumanMessage(content=new_aggregate, name="validator")
+                HumanMessage(content=new_aggregate, name=response.name, clarifying_question=response.Clarifying_Question)
             ]
         },
-        goto="responder",
+        goto=goto,
     )
 
 def finish_node(state: MessagesState) -> Command[Literal["__end__"]]:
