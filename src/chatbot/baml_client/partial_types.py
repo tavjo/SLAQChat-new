@@ -34,9 +34,18 @@ class StreamState(BaseModel, Generic[T]):
     state: Literal["Pending", "Incomplete", "Complete"]
 
 
+class DataSummarizer(BaseModel):
+    Next_worker: Optional[str] = None
+    summary: Optional[str] = None
+    user_query: Optional[str] = None
+
 class Responder(BaseModel):
     Next_worker: Optional[str] = None
-    Aggregated_Messages: Optional[str] = None
+    aggregatedMessages: Optional[str] = None
+    user_query: Optional[str] = None
+
+class ResponseFormatter(BaseModel):
+    Next_worker: Optional[str] = None
     formattedResponse: Optional[str] = None
     name: Optional[str] = None
 
@@ -45,6 +54,11 @@ class Resume(BaseModel):
     email: Optional[str] = None
     experience: List[Optional[str]]
     skills: List[Optional[str]]
+
+class Supervisor(BaseModel):
+    Next_worker: Optional[str] = None
+    aggregatedMessages: Optional[str] = None
+    user_query: Optional[str] = None
 
 class Validator(BaseModel):
     Valid: Optional[bool] = None

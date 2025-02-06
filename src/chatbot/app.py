@@ -1,7 +1,22 @@
 # chatbot_interface.py
 import streamlit as st
-from studio.sample_retriever import graph
+from studio.sample_retriever import sampleRetrieverGraph
 from langchain_core.messages import HumanMessage
+from langgraph.checkpoint.sqlite import SqliteSaver
+# checkpoint
+import sqlite3
+from dotenv import load_dotenv
+import os
+from langgraph.graph import MessagesState
+load_dotenv()
+os.environ["OPENAI_API_KEY"] = os.getenv("OPENAI_API_KEY")
+
+
+# In memory
+conn = sqlite3.connect(":memory:", check_same_thread = False)
+memory = SqliteSaver(conn)
+
+graph = sampleRetrieverGraph(state = MessagesState, memory = memory)
 
 def run_agent_chatbot():
     st.title("💬 NExtSEEK Chatbot")

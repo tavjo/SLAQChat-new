@@ -1,4 +1,4 @@
-from langchain_core.messages import BaseMessage, HumanMessage
+from langchain_core.messages import BaseMessage, HumanMessage, AIMessage
 from langchain_openai import ChatOpenAI
 
 from langgraph.graph import START, StateGraph, MessagesState, END
@@ -8,22 +8,16 @@ from typing_extensions import Annotated, TypedDict, Sequence, Literal
 from langgraph.graph.message import add_messages
 from langgraph.types import Command
 # from pydantic import BaseModel, ConfigDict
-from langgraph.checkpoint.sqlite import SqliteSaver
+# from langgraph.checkpoint.sqlite import SqliteSaver
 import sys
 import os
 from baml_client import b as baml
 
 from studio.prompts import (
-    MEMBERS,
-    OPTIONS,
-    WORKERS,
-    SYS_MSG_SUPERVISOR,
     SYS_MSG_TOOLSET_1,
     SYS_MSG_TOOLSET_2,
     SYS_MSG_TOOLSET_3,
     SYS_MSG_LINK_ADDER,
-    SYS_MSG_RESPONDER,
-    SYS_MSG_VALIDATOR
 )
 
 # Add the project root directory to the Python path
@@ -39,19 +33,27 @@ from dotenv import load_dotenv
 load_dotenv()
 
 os.environ["OPENAI_API_KEY"] = os.getenv("OPENAI_API_KEY")
-# checkpoint
-import sqlite3
-# In memory
-conn = sqlite3.connect(":memory:", check_same_thread = False)
-memory = SqliteSaver(conn)
+
 
 # Define router type for structured output
 
-class Router(TypedDict):
-    """Worker to route to next. If no workers needed, route to FINISH."""
-    next: Literal["link_retriever", "descendant_metadata_retriever", "basic_sample_info_retriever","responder"]
+# class Router(TypedDict):
+#     """Worker to route to next. If no workers needed, route to FINISH."""
+#     next: Literal["descendant_metadata_retriever", "link_retriever", "basic_sample_info_retriever","responder"]
+
+
 
 def supervisor_node(state: MessagesState) -> Command[Literal["link_retriever", "descendant_metadata_retriever", "basic_sample_info_retriever","responder"]]:
+    work_groupA = {
+    "descendant_metadata_retriever":"Retrieve descendant metadata for the sample",
+    "link_retriever": "Retrieve link for the sample and/or the associatedprotocol",
+    "basic_sample_info_retriever": "Retrieve basic sample info for the sample",
+    "responder": "Validate and respond to the user's query",
+}
+    if "available_workers" not in state:
+        state["available_workers"] = work_groupA  # make a copy to update dynamically
+
+    available_workers = state["available_workers"]
     # Step 1: Aggregate responses from all agents
     aggregated_agent_responses = ""
     for msg in state["messages"]:
@@ -62,25 +64,19 @@ def supervisor_node(state: MessagesState) -> Command[Literal["link_retriever", "
         else:
             aggregated_agent_responses += f"{msg.content}\n"
     
-    # Step 2: Create a prompt that instructs the LLM to summarize all responses
-    prompt = (
-        "Please provide a comprehensive summary of the following agent responses:\n"
-        f"{aggregated_agent_responses}\n"
-        "Based on the original user request, decide which worker should act next. "
-        "If the query is ambiguous or requires more details, ask a clarifying question instead of proceeding."
-    )
-    
-    # Step 3: Build the messages list with the supervisor system prompt and the aggregated prompt
-    messages = [
-        {"role": "system", "content": SYS_MSG_SUPERVISOR},
-        {"role": "user", "content": prompt},
-    ] + state["messages"]
-    
-    # Step 4: Invoke the LLM with the structured output to get the next command and summary
-    response = llm.with_structured_output(Router).invoke(messages)
-    goto = response["next"]
+    response = baml.Supervise(aggregated_agent_responses, available_workers)
+    goto = response.Next_worker
     print(f"Next Worker: {goto}")
-    return Command(goto=goto)
+    if goto in available_workers:
+        del available_workers[goto]
+    print(f"Available Workers: {available_workers}")
+    # Save the updated available_workers back to state
+    state["available_workers"] = available_workers
+    return Command(update={
+        "messages":[
+            HumanMessage(content=response.aggregatedMessages,user_query=response.user_query)
+        ]}
+        ,goto=goto)
 
 
 ########################################################
@@ -131,13 +127,13 @@ def create_worker(llm, tools, msg):
 ########################################################
 
 
-toolset1 = [get_sample_name, retrieve_sample_info, fetch_protocol]
+toolset1 = [get_sample_name, retrieve_sample_info]
 
 toolset2 = [fetchChildren, fetch_all_descendants]#fetchAllMetadata
 
 toolset3 = [summarize_sample_info]
 
-toolset4 = [add_links]
+toolset4 = [add_links, fetch_protocol]
 
 ########################################################
 # LLMs with bound tools
@@ -179,11 +175,16 @@ def descendant_metadata_retriever_node(state: MessagesState) -> Command[Literal[
     )
 
 def data_summarizer_node(state: MessagesState) -> Command[Literal["responder"]]:
-    result = data_summarizer.invoke(state)
+    # messages = [
+    #     HumanMessage(content=state["messages"][-1].content, name="data_summarizer")
+    # ]
+    # result = data_summarizer.invoke(messages)
+    user_query = state["messages"][-1].user_query
+    result = baml.SummarizeData(state["messages"][-1].content, user_query)
     return Command(
         update={
             "messages": [
-                HumanMessage(content=result["messages"][-1].content, name="data_summarizer")
+                HumanMessage(content=result.summary, name="data_summarizer", user_query=user_query)
             ]
         },
         goto="responder",
@@ -200,78 +201,105 @@ def link_retriever_node(state: MessagesState) -> Command[Literal["supervisor"]]:
         goto="supervisor",
     )
 
-class postRouter(TypedDict):
-    """Worker to route to next. If no workers needed, route to FINISH."""
-    next: Literal["validator","data_summarizer","FINISH"]
+# class postRouter(TypedDict):
+#     """Worker to route to next. If no workers needed, route to FINISH."""
+#     next: Literal["data_summarizer","response_formatter","validator","FINISH"]
 
-def responder_node(state: MessagesState) -> Command[Literal["validator","data_summarizer","FINISH"]]:
-    # llm = ChatOpenAI(model="gpt-4o")
+def responder_node(state: MessagesState) -> Command[Literal["data_summarizer","response_formatter","validator","FINISH"]]:
+
+    work_groupB = {
+    "data_summarizer":"1.(optional) Summarize the data if response is longer than 100 words",
+    "response_formatter":"2.(optional) Format the response if data_summarizer is used",
+    "validator":"3.Validate the response",
+    "FINISH":"4.Finish the conversation"
+    }
+        # Initialize the available workers map if not already in state
+    if "available_workers" not in state:
+        state["available_workers"] = work_groupB  # make a copy to update dynamically
+
+    available_workers = state["available_workers"]
     # Aggregate the content of each HumanMessage into a single string
-    aggregated_messages = "\n".join([msg.content for msg in state["messages"]])
-    # messages = [
-    #     {"role": "system", "content": SYS_MSG_RESPONDER},
-    #     {"role": "user", "content": aggregated_messages},
-    # ] + state["messages"]
-    
-    # Step 4: Invoke the LLM with the structured output to get the next command and summary
-    # response = llm.with_structured_output(postRouter).invoke(messages)
-    response = baml.Respond(aggregated_messages)
+    inputMessage = state["messages"][-1].content
+    user_query = state["messages"][-1].user_query
+    prev_worker = state["messages"][-1].name if state["messages"][-1].name else ""
+    # inputMessage = "\n".join([msg.content for msg in state["messages"]])
+    # print(inputMessage)
+    response = baml.Respond(inputMessage, workers=available_workers, user_query=user_query, prev_worker=prev_worker)
     goto = response.Next_worker
     print(f"Next Worker: {goto}")
-    if goto == "FINISH":
-        return Command(
-            update={
-                "messages": [
-                HumanMessage(content=response.formattedResponse)
+    if goto in available_workers:
+        del available_workers[goto]
+    print(f"Available Workers: {available_workers}")
+    # Save the updated available_workers back to state
+    state["available_workers"] = available_workers
+    return Command(update={
+            "messages":[
+                HumanMessage(content=response.aggregatedMessages,user_query=user_query, available_workers=available_workers)
             ]
-        },
-        goto=goto)
-    else:
-        return Command(goto=goto)
+        },goto=goto)
 
 def validator_node(state: AgentState) -> Command[Literal["responder"]]:
-    # llm = ChatOpenAI(model="gpt-4o")
     # # Aggregate the content of each HumanMessage into a single string
-    aggregated_messages = "\n".join([msg.content for msg in state["messages"]])
-    # print(aggregated_messages)
-    # messages = [
-    #     {"role": "system", "content": SYS_MSG_VALIDATOR},
-    #     {"role": "user", "content": aggregated_messages},
-    # ]
-    # # Step 4: Invoke the LLM with the structured output to get the next command and summary
-    # response = llm.invoke(messages)
-    response = baml.ValidateResponse(aggregated_messages)
+    # aggregated_messages = "\n".join([msg.content for msg in state["messages"]])
+    aggregated_messages = state["messages"][-1].content
+    user_query = state["messages"][-1].user_query
+    print(user_query)
+    response = baml.ValidateResponse(user_query=user_query, response=aggregated_messages)
     goto = response.Next_worker
-    # new_aggregate = "\n".join([msg.content for msg in response["messages"]])
+    print(response.name)
     if response.Valid:
-        new_aggregate = response.Summary + "\n" + response.Metadata
+        new_aggregate = response.originalMessage
     else:
         new_aggregate = response.Clarifying_Question
     return Command(
         update={
             "messages": [
-                HumanMessage(content=new_aggregate, name=response.name, clarifying_question=response.Clarifying_Question)
+                HumanMessage(content=new_aggregate, name="validator", user_query=user_query)
+            ]
+        },
+        goto=goto,
+    )
+
+def response_formatter_node(state: MessagesState) -> Command[Literal["responder"]]:
+    user_query = state["messages"][-1].user_query
+    result = baml.FormatResponse(user_query,state["messages"][-1].content)
+    print(result)
+    goto = result.Next_worker
+    name = "response_formatter"
+    return Command(
+        update={
+            "messages": [
+                HumanMessage(content=result.formattedResponse, name=name, user_query=user_query)
             ]
         },
         goto=goto,
     )
 
 def finish_node(state: MessagesState) -> Command[Literal["__end__"]]:
-    messages = state["messages"]
+    messages = state["messages"][-1].content
     print(messages)
     goto = END
-    return Command(update={"messages": state["messages"]},goto=goto)    
+    return Command(goto=goto)    
 
-builder = StateGraph(MessagesState)
-builder.add_edge(START, "supervisor")
-builder.add_node("supervisor", supervisor_node)
-builder.add_node("basic_sample_info_retriever", basic_sample_info_retriever_node)
-builder.add_node("descendant_metadata_retriever", descendant_metadata_retriever_node)
-builder.add_node("data_summarizer", data_summarizer_node)
-builder.add_node("link_retriever", link_retriever_node)
-builder.add_node("validator", validator_node)
-builder.add_node("responder", responder_node)
-builder.add_node("FINISH", finish_node)
+def sampleRetrieverGraph(state: MessagesState, memory = None):
+    builder = StateGraph(MessagesState)
+    builder.add_edge(START, "supervisor")
+    builder.add_node("supervisor", supervisor_node)
+    builder.add_node("basic_sample_info_retriever", basic_sample_info_retriever_node)
+    builder.add_node("descendant_metadata_retriever", descendant_metadata_retriever_node)
+    builder.add_node("data_summarizer", data_summarizer_node)
+    builder.add_node("link_retriever", link_retriever_node)
+    builder.add_node("validator", validator_node)
+    builder.add_node("responder", responder_node)
+    builder.add_node("response_formatter", response_formatter_node)
+    builder.add_node("FINISH", finish_node)
 
-# Compile graph
-graph = builder.compile(checkpointer=memory)
+    # Compile graph
+    if memory is not None:
+        graph = builder.compile(checkpointer=memory)
+    else:
+        graph = builder.compile()
+    return graph
+
+# Example use without memory
+graph = sampleRetrieverGraph(state = MessagesState)

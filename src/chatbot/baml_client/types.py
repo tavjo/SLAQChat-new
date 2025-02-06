@@ -39,9 +39,18 @@ def all_succeeded(checks: Dict[CheckName, Check]) -> bool:
 
 
 
+class DataSummarizer(BaseModel):
+    Next_worker: str
+    summary: str
+    user_query: str
+
 class Responder(BaseModel):
     Next_worker: str
-    Aggregated_Messages: str
+    aggregatedMessages: str
+    user_query: str
+
+class ResponseFormatter(BaseModel):
+    Next_worker: str
     formattedResponse: str
     name: str
 
@@ -50,6 +59,11 @@ class Resume(BaseModel):
     email: str
     experience: List[str]
     skills: List[str]
+
+class Supervisor(BaseModel):
+    Next_worker: str
+    aggregatedMessages: str
+    user_query: str
 
 class Validator(BaseModel):
     Valid: bool

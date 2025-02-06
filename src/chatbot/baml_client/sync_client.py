@@ -70,9 +70,32 @@ class BamlSyncClient:
       )
       return cast(types.Resume, raw.cast_to(types, types, partial_types, False))
     
+    def FormatResponse(
+        self,
+        user_query: str,inputMessage: str,
+        baml_options: BamlCallOptions = {},
+    ) -> types.ResponseFormatter:
+      __tb__ = baml_options.get("tb", None)
+      if __tb__ is not None:
+        tb = __tb__._tb # type: ignore (we know how to use this private attribute)
+      else:
+        tb = None
+      __cr__ = baml_options.get("client_registry", None)
+
+      raw = self.__runtime.call_function_sync(
+        "FormatResponse",
+        {
+          "user_query": user_query,"inputMessage": inputMessage,
+        },
+        self.__ctx_manager.get(),
+        tb,
+        __cr__,
+      )
+      return cast(types.ResponseFormatter, raw.cast_to(types, types, partial_types, False))
+    
     def Respond(
         self,
-        inputMessage: str,
+        inputMessage: str,workers: Dict[str, str],user_query: str,prev_worker: str,
         baml_options: BamlCallOptions = {},
     ) -> types.Responder:
       __tb__ = baml_options.get("tb", None)
@@ -85,7 +108,7 @@ class BamlSyncClient:
       raw = self.__runtime.call_function_sync(
         "Respond",
         {
-          "inputMessage": inputMessage,
+          "inputMessage": inputMessage,"workers": workers,"user_query": user_query,"prev_worker": prev_worker,
         },
         self.__ctx_manager.get(),
         tb,
@@ -93,9 +116,55 @@ class BamlSyncClient:
       )
       return cast(types.Responder, raw.cast_to(types, types, partial_types, False))
     
+    def SummarizeData(
+        self,
+        inputMessage: str,user_query: str,
+        baml_options: BamlCallOptions = {},
+    ) -> types.DataSummarizer:
+      __tb__ = baml_options.get("tb", None)
+      if __tb__ is not None:
+        tb = __tb__._tb # type: ignore (we know how to use this private attribute)
+      else:
+        tb = None
+      __cr__ = baml_options.get("client_registry", None)
+
+      raw = self.__runtime.call_function_sync(
+        "SummarizeData",
+        {
+          "inputMessage": inputMessage,"user_query": user_query,
+        },
+        self.__ctx_manager.get(),
+        tb,
+        __cr__,
+      )
+      return cast(types.DataSummarizer, raw.cast_to(types, types, partial_types, False))
+    
+    def Supervise(
+        self,
+        Messages: str,workers: Dict[str, str],
+        baml_options: BamlCallOptions = {},
+    ) -> types.Supervisor:
+      __tb__ = baml_options.get("tb", None)
+      if __tb__ is not None:
+        tb = __tb__._tb # type: ignore (we know how to use this private attribute)
+      else:
+        tb = None
+      __cr__ = baml_options.get("client_registry", None)
+
+      raw = self.__runtime.call_function_sync(
+        "Supervise",
+        {
+          "Messages": Messages,"workers": workers,
+        },
+        self.__ctx_manager.get(),
+        tb,
+        __cr__,
+      )
+      return cast(types.Supervisor, raw.cast_to(types, types, partial_types, False))
+    
     def ValidateResponse(
         self,
-        response: str,
+        user_query: str,response: str,
         baml_options: BamlCallOptions = {},
     ) -> types.Validator:
       __tb__ = baml_options.get("tb", None)
@@ -108,7 +177,7 @@ class BamlSyncClient:
       raw = self.__runtime.call_function_sync(
         "ValidateResponse",
         {
-          "response": response,
+          "user_query": user_query,"response": response,
         },
         self.__ctx_manager.get(),
         tb,
@@ -158,9 +227,40 @@ class BamlStreamClient:
         self.__ctx_manager.get(),
       )
     
+    def FormatResponse(
+        self,
+        user_query: str,inputMessage: str,
+        baml_options: BamlCallOptions = {},
+    ) -> baml_py.BamlSyncStream[partial_types.ResponseFormatter, types.ResponseFormatter]:
+      __tb__ = baml_options.get("tb", None)
+      if __tb__ is not None:
+        tb = __tb__._tb # type: ignore (we know how to use this private attribute)
+      else:
+        tb = None
+      __cr__ = baml_options.get("client_registry", None)
+
+      raw = self.__runtime.stream_function_sync(
+        "FormatResponse",
+        {
+          "user_query": user_query,
+          "inputMessage": inputMessage,
+        },
+        None,
+        self.__ctx_manager.get(),
+        tb,
+        __cr__,
+      )
+
+      return baml_py.BamlSyncStream[partial_types.ResponseFormatter, types.ResponseFormatter](
+        raw,
+        lambda x: cast(partial_types.ResponseFormatter, x.cast_to(types, types, partial_types, True)),
+        lambda x: cast(types.ResponseFormatter, x.cast_to(types, types, partial_types, False)),
+        self.__ctx_manager.get(),
+      )
+    
     def Respond(
         self,
-        inputMessage: str,
+        inputMessage: str,workers: Dict[str, str],user_query: str,prev_worker: str,
         baml_options: BamlCallOptions = {},
     ) -> baml_py.BamlSyncStream[partial_types.Responder, types.Responder]:
       __tb__ = baml_options.get("tb", None)
@@ -174,6 +274,9 @@ class BamlStreamClient:
         "Respond",
         {
           "inputMessage": inputMessage,
+          "workers": workers,
+          "user_query": user_query,
+          "prev_worker": prev_worker,
         },
         None,
         self.__ctx_manager.get(),
@@ -188,9 +291,71 @@ class BamlStreamClient:
         self.__ctx_manager.get(),
       )
     
+    def SummarizeData(
+        self,
+        inputMessage: str,user_query: str,
+        baml_options: BamlCallOptions = {},
+    ) -> baml_py.BamlSyncStream[partial_types.DataSummarizer, types.DataSummarizer]:
+      __tb__ = baml_options.get("tb", None)
+      if __tb__ is not None:
+        tb = __tb__._tb # type: ignore (we know how to use this private attribute)
+      else:
+        tb = None
+      __cr__ = baml_options.get("client_registry", None)
+
+      raw = self.__runtime.stream_function_sync(
+        "SummarizeData",
+        {
+          "inputMessage": inputMessage,
+          "user_query": user_query,
+        },
+        None,
+        self.__ctx_manager.get(),
+        tb,
+        __cr__,
+      )
+
+      return baml_py.BamlSyncStream[partial_types.DataSummarizer, types.DataSummarizer](
+        raw,
+        lambda x: cast(partial_types.DataSummarizer, x.cast_to(types, types, partial_types, True)),
+        lambda x: cast(types.DataSummarizer, x.cast_to(types, types, partial_types, False)),
+        self.__ctx_manager.get(),
+      )
+    
+    def Supervise(
+        self,
+        Messages: str,workers: Dict[str, str],
+        baml_options: BamlCallOptions = {},
+    ) -> baml_py.BamlSyncStream[partial_types.Supervisor, types.Supervisor]:
+      __tb__ = baml_options.get("tb", None)
+      if __tb__ is not None:
+        tb = __tb__._tb # type: ignore (we know how to use this private attribute)
+      else:
+        tb = None
+      __cr__ = baml_options.get("client_registry", None)
+
+      raw = self.__runtime.stream_function_sync(
+        "Supervise",
+        {
+          "Messages": Messages,
+          "workers": workers,
+        },
+        None,
+        self.__ctx_manager.get(),
+        tb,
+        __cr__,
+      )
+
+      return baml_py.BamlSyncStream[partial_types.Supervisor, types.Supervisor](
+        raw,
+        lambda x: cast(partial_types.Supervisor, x.cast_to(types, types, partial_types, True)),
+        lambda x: cast(types.Supervisor, x.cast_to(types, types, partial_types, False)),
+        self.__ctx_manager.get(),
+      )
+    
     def ValidateResponse(
         self,
-        response: str,
+        user_query: str,response: str,
         baml_options: BamlCallOptions = {},
     ) -> baml_py.BamlSyncStream[partial_types.Validator, types.Validator]:
       __tb__ = baml_options.get("tb", None)
@@ -203,6 +368,7 @@ class BamlStreamClient:
       raw = self.__runtime.stream_function_sync(
         "ValidateResponse",
         {
+          "user_query": user_query,
           "response": response,
         },
         None,

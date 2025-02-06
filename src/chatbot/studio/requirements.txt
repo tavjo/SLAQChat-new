@@ -2,5 +2,8 @@ langgraph
 langchain-core
 langchain-community
 langchain-openai
-dotenv
-
+sqlalchemy
+pydantic
+typing
+python-dotenv
+baml-py
