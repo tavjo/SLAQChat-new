@@ -39,6 +39,13 @@ class DataSummarizer(BaseModel):
     summary: Optional[str] = None
     user_query: Optional[str] = None
 
+class Navigator(BaseModel):
+    agent: Optional[str] = None
+    user_query: Optional[str] = None
+    next_tool: Optional[str] = None
+    tool_arg: Optional[str] = None
+    summedMessages: Optional[Union[List[Optional[str]], Optional[None]]] = None
+
 class Responder(BaseModel):
     Next_worker: Optional[str] = None
     aggregatedMessages: Optional[str] = None

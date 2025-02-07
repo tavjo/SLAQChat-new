@@ -44,6 +44,13 @@ class DataSummarizer(BaseModel):
     summary: str
     user_query: str
 
+class Navigator(BaseModel):
+    agent: str
+    user_query: str
+    next_tool: str
+    tool_arg: str
+    summedMessages: Union[List[str], Optional[None]]
+
 class Responder(BaseModel):
     Next_worker: str
     aggregatedMessages: str

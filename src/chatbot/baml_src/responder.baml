@@ -7,7 +7,7 @@ class Responder {
 }
 
 // Create a function to respond to the user's query.
-function Respond(inputMessage: string, workers: map<string, string>, user_query: string, prev_worker: string) -> Responder {
+function Respond(inputMessage: string, workers: string[], workers_description: map<string, string>, user_query: string, prev_worker: string) -> Responder {
     client MyClient
       prompt #"
         Sequentially use the workers in the order of {{ workers }} to respond to the user's query. 
@@ -18,6 +18,7 @@ function Respond(inputMessage: string, workers: map<string, string>, user_query:
         {{inputMessage}}
         {{user_query}}
         {{prev_worker}}
+        {{workers_description}}
         {{ ctx.output_format }}
   "#
 }

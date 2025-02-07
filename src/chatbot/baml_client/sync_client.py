@@ -93,9 +93,32 @@ class BamlSyncClient:
       )
       return cast(types.ResponseFormatter, raw.cast_to(types, types, partial_types, False))
     
+    def Navigate(
+        self,
+        agent: str,toolbox: List[str],tools_description: Dict[str, str],user_query: str,summedMessages: Union[List[str], Optional[None]],
+        baml_options: BamlCallOptions = {},
+    ) -> types.Navigator:
+      __tb__ = baml_options.get("tb", None)
+      if __tb__ is not None:
+        tb = __tb__._tb # type: ignore (we know how to use this private attribute)
+      else:
+        tb = None
+      __cr__ = baml_options.get("client_registry", None)
+
+      raw = self.__runtime.call_function_sync(
+        "Navigate",
+        {
+          "agent": agent,"toolbox": toolbox,"tools_description": tools_description,"user_query": user_query,"summedMessages": summedMessages,
+        },
+        self.__ctx_manager.get(),
+        tb,
+        __cr__,
+      )
+      return cast(types.Navigator, raw.cast_to(types, types, partial_types, False))
+    
     def Respond(
         self,
-        inputMessage: str,workers: Dict[str, str],user_query: str,prev_worker: str,
+        inputMessage: str,workers: List[str],workers_description: Dict[str, str],user_query: str,prev_worker: str,
         baml_options: BamlCallOptions = {},
     ) -> types.Responder:
       __tb__ = baml_options.get("tb", None)
@@ -108,7 +131,7 @@ class BamlSyncClient:
       raw = self.__runtime.call_function_sync(
         "Respond",
         {
-          "inputMessage": inputMessage,"workers": workers,"user_query": user_query,"prev_worker": prev_worker,
+          "inputMessage": inputMessage,"workers": workers,"workers_description": workers_description,"user_query": user_query,"prev_worker": prev_worker,
         },
         self.__ctx_manager.get(),
         tb,
@@ -258,9 +281,43 @@ class BamlStreamClient:
         self.__ctx_manager.get(),
       )
     
+    def Navigate(
+        self,
+        agent: str,toolbox: List[str],tools_description: Dict[str, str],user_query: str,summedMessages: Union[List[str], Optional[None]],
+        baml_options: BamlCallOptions = {},
+    ) -> baml_py.BamlSyncStream[partial_types.Navigator, types.Navigator]:
+      __tb__ = baml_options.get("tb", None)
+      if __tb__ is not None:
+        tb = __tb__._tb # type: ignore (we know how to use this private attribute)
+      else:
+        tb = None
+      __cr__ = baml_options.get("client_registry", None)
+
+      raw = self.__runtime.stream_function_sync(
+        "Navigate",
+        {
+          "agent": agent,
+          "toolbox": toolbox,
+          "tools_description": tools_description,
+          "user_query": user_query,
+          "summedMessages": summedMessages,
+        },
+        None,
+        self.__ctx_manager.get(),
+        tb,
+        __cr__,
+      )
+
+      return baml_py.BamlSyncStream[partial_types.Navigator, types.Navigator](
+        raw,
+        lambda x: cast(partial_types.Navigator, x.cast_to(types, types, partial_types, True)),
+        lambda x: cast(types.Navigator, x.cast_to(types, types, partial_types, False)),
+        self.__ctx_manager.get(),
+      )
+    
     def Respond(
         self,
-        inputMessage: str,workers: Dict[str, str],user_query: str,prev_worker: str,
+        inputMessage: str,workers: List[str],workers_description: Dict[str, str],user_query: str,prev_worker: str,
         baml_options: BamlCallOptions = {},
     ) -> baml_py.BamlSyncStream[partial_types.Responder, types.Responder]:
       __tb__ = baml_options.get("tb", None)
@@ -275,6 +332,7 @@ class BamlStreamClient:
         {
           "inputMessage": inputMessage,
           "workers": workers,
+          "workers_description": workers_description,
           "user_query": user_query,
           "prev_worker": prev_worker,
         },

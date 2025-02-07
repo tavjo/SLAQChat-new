@@ -45,9 +45,9 @@ os.environ["OPENAI_API_KEY"] = os.getenv("OPENAI_API_KEY")
 
 def supervisor_node(state: MessagesState) -> Command[Literal["link_retriever", "descendant_metadata_retriever", "basic_sample_info_retriever","responder"]]:
     work_groupA = {
-    "descendant_metadata_retriever":"Retrieve descendant metadata for the sample",
-    "link_retriever": "Retrieve link for the sample and/or the associatedprotocol",
-    "basic_sample_info_retriever": "Retrieve basic sample info for the sample",
+    "descendant_metadata_retriever":"Retrieve children and descendants of a sample",
+    "link_retriever": "Retrieve link for the sample and/or the associated protocol",
+    "basic_sample_info_retriever": "Retrieve basic metadata for the sample",
     "responder": "Validate and respond to the user's query",
 }
     if "available_workers" not in state:
@@ -106,17 +106,22 @@ def create_agent(llm, tools, msg):
     graph_builder.set_entry_point("agent")
     return graph_builder.compile()
 
-def create_worker(llm, tools, msg):
-    llm_with_tools = llm.bind_tools(tools)
+def create_worker(agent, tools, tools_description):
+    # llm_with_tools = llm.bind_tools(tools)
     def chatbot(state: AgentState):
-        return {"messages": [llm_with_tools.invoke(state["messages"] + [{"role": "system", "content": msg}])]} 
+        result = baml.Navigate(agent = agent, toolbox = tools, tools_description = tools_description, user_query = state["messages"][-1].user_query)
+        return state["messages"] + [HumanMessage(content = result.next_tool, name = agent, tool_arg = result.tool_arg)]
 
     graph_builder = StateGraph(AgentState)
     graph_builder.add_node("agent", chatbot)
 
     tool_node = ToolNode(tools=tools)
     graph_builder.add_node("tools", tool_node)
-    graph_builder.add_edge("agent", "tools")
+
+    graph_builder.add_conditional_edges(
+        "agent",
+        tools_condition,
+    )
     graph_builder.add_edge("tools", "agent")
     graph_builder.set_entry_point("agent")
     return graph_builder.compile()
@@ -190,7 +195,8 @@ def data_summarizer_node(state: MessagesState) -> Command[Literal["responder"]]:
         goto="responder",
     )
 
-def link_retriever_node(state: MessagesState) -> Command[Literal["supervisor"]]:
+def link_retriever_node(state: MessagesState, tools: List[str], tools_description: dict) -> Command[Literal["supervisor"]]:
+
     result = link_retriever.invoke(state)
     return Command(
         update={
@@ -200,10 +206,6 @@ def link_retriever_node(state: MessagesState) -> Command[Literal["supervisor"]]:
         },
         goto="supervisor",
     )
-
-# class postRouter(TypedDict):
-#     """Worker to route to next. If no workers needed, route to FINISH."""
-#     next: Literal["data_summarizer","response_formatter","validator","FINISH"]
 
 def responder_node(state: MessagesState) -> Command[Literal["data_summarizer","response_formatter","validator","FINISH"]]:
 
@@ -224,7 +226,7 @@ def responder_node(state: MessagesState) -> Command[Literal["data_summarizer","r
     prev_worker = state["messages"][-1].name if state["messages"][-1].name else ""
     # inputMessage = "\n".join([msg.content for msg in state["messages"]])
     # print(inputMessage)
-    response = baml.Respond(inputMessage, workers=available_workers, user_query=user_query, prev_worker=prev_worker)
+    response = baml.Respond(inputMessage, workers=list(available_workers.keys()), workers_description=available_workers, user_query=user_query, prev_worker=prev_worker)
     goto = response.Next_worker
     print(f"Next Worker: {goto}")
     if goto in available_workers:
@@ -293,6 +295,9 @@ def sampleRetrieverGraph(state: MessagesState, memory = None):
     builder.add_node("responder", responder_node)
     builder.add_node("response_formatter", response_formatter_node)
     builder.add_node("FINISH", finish_node)
+    # builder.add_edge("supervisor", "responder")
+    builder.add_edge("responder", "FINISH")
+    builder.add_edge("FINISH", END)
 
     # Compile graph
     if memory is not None:
