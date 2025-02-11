@@ -3,7 +3,7 @@ from langchain_openai import ChatOpenAI
 
 from langgraph.graph import START, StateGraph, MessagesState, END
 from langgraph.prebuilt import tools_condition, ToolNode
-from typing import List
+from typing import List, Optional
 from typing_extensions import Annotated, TypedDict, Sequence, Literal
 from langgraph.graph.message import add_messages
 from langgraph.types import Command
@@ -12,21 +12,25 @@ from langgraph.types import Command
 import sys
 import os
 from baml_client import b as baml
+# import nest_asyncio
+# nest_asyncio.apply()
 
 from studio.prompts import (
-    SYS_MSG_TOOLSET_1,
-    SYS_MSG_TOOLSET_2,
+    # SYS_MSG_TOOLSET_1,
+    # SYS_MSG_TOOLSET_2,
     SYS_MSG_TOOLSET_3,
-    SYS_MSG_LINK_ADDER,
+    # SYS_MSG_LINK_ADDER,
 )
 
 # Add the project root directory to the Python path
 project_root = os.path.abspath(os.path.join(os.path.dirname(__file__), '../../..'))
 sys.path.append(project_root)
 
-from backend.Tools.services.sample_service import get_sample_name, fetch_protocol, retrieve_sample_info, fetchChildren, fetch_all_descendants, add_links
+# from backend.Tools.services.sample_service import get_sample_name, fetch_protocol, retrieve_sample_info, fetchChildren, fetch_all_descendants, add_links
 
 from backend.Tools.services.llm_service import summarize_sample_info
+# import asyncio
+from src.chatbot.studio.basic_sample_info import basic_sample_info, TOOLSET1
 
 # import env variables
 from dotenv import load_dotenv
@@ -35,18 +39,10 @@ load_dotenv()
 os.environ["OPENAI_API_KEY"] = os.getenv("OPENAI_API_KEY")
 
 
-# Define router type for structured output
-
-# class Router(TypedDict):
-#     """Worker to route to next. If no workers needed, route to FINISH."""
-#     next: Literal["descendant_metadata_retriever", "link_retriever", "basic_sample_info_retriever","responder"]
-
-
-
-def supervisor_node(state: MessagesState) -> Command[Literal["link_retriever", "descendant_metadata_retriever", "basic_sample_info_retriever","responder"]]:
+def supervisor_node(state: MessagesState) -> Command[Literal["basic_sample_info_retriever","responder"]]:
     work_groupA = {
-    "descendant_metadata_retriever":"Retrieve children and descendants of a sample",
-    "link_retriever": "Retrieve link for the sample and/or the associated protocol",
+    # "descendant_metadata_retriever":"Retrieve children and descendants of a sample",
+    # "link_retriever": "Retrieve link for the sample and/or the associated protocol",
     "basic_sample_info_retriever": "Retrieve basic metadata for the sample",
     "responder": "Validate and respond to the user's query",
 }
@@ -75,17 +71,25 @@ def supervisor_node(state: MessagesState) -> Command[Literal["link_retriever", "
     return Command(update={
         "messages":[
             HumanMessage(content=response.aggregatedMessages,user_query=response.user_query)
-        ]}
-        ,goto=goto)
+        ],
+        "resource": state["resource"]
+        },goto=goto)
 
 
 ########################################################
 # Create agents
 ########################################################
 
+class ResourceBox(TypedDict):
+    """The resources available to the agent."""
+    sample_metadata: list[dict]
+    protocol: str
+    link: Optional[str] = None
+
 class AgentState(TypedDict):
     """The state of the agent."""
     messages: Annotated[Sequence[BaseMessage], add_messages]
+    resource: ResourceBox
 
 def create_agent(llm, tools, msg):
     llm_with_tools = llm.bind_tools(tools)
@@ -106,16 +110,17 @@ def create_agent(llm, tools, msg):
     graph_builder.set_entry_point("agent")
     return graph_builder.compile()
 
-def create_worker(agent, tools, tools_description):
+async def create_worker(tools, func):
     # llm_with_tools = llm.bind_tools(tools)
-    def chatbot(state: AgentState):
-        result = baml.Navigate(agent = agent, toolbox = tools, tools_description = tools_description, user_query = state["messages"][-1].user_query)
-        return state["messages"] + [HumanMessage(content = result.next_tool, name = agent, tool_arg = result.tool_arg)]
+    async def chatbot(state: AgentState):
+        summedMessages = [msg.content for msg in state["messages"]]
+        result = await func(user_query = state["messages"][-1].user_query, summedMessages = summedMessages)
+        return {"messages": [result] + state["messages"], "resource": result["result"]}
 
     graph_builder = StateGraph(AgentState)
     graph_builder.add_node("agent", chatbot)
 
-    tool_node = ToolNode(tools=tools)
+    tool_node = ToolNode(tools)
     graph_builder.add_node("tools", tool_node)
 
     graph_builder.add_conditional_edges(
@@ -132,13 +137,11 @@ def create_worker(agent, tools, tools_description):
 ########################################################
 
 
-toolset1 = [get_sample_name, retrieve_sample_info]
-
-toolset2 = [fetchChildren, fetch_all_descendants]#fetchAllMetadata
+# toolset2 = [fetchChildren, fetch_all_descendants]#fetchAllMetadata
 
 toolset3 = [summarize_sample_info]
 
-toolset4 = [add_links, fetch_protocol]
+# toolset4 = [add_links, fetch_protocol]
 
 ########################################################
 # LLMs with bound tools
@@ -152,32 +155,38 @@ llm = ChatOpenAI(model="gpt-4o", temperature=0)
 
 
 ## build agents
-basic_sample_info_retriever = create_agent(llm, toolset1, SYS_MSG_TOOLSET_1)
-descendant_metadata_retriever = create_agent(llm, toolset2, SYS_MSG_TOOLSET_2)
+# basic_sample_info_retriever = create_agent(llm, toolset1, SYS_MSG_TOOLSET_1)
+# descendant_metadata_retriever = create_agent(llm, toolset2, SYS_MSG_TOOLSET_2)
 data_summarizer = create_agent(llm, toolset3, SYS_MSG_TOOLSET_3)
-link_retriever = create_agent(llm, toolset4, SYS_MSG_LINK_ADDER)
+# link_retriever = create_agent(llm, toolset4, SYS_MSG_LINK_ADDER)
 
-def basic_sample_info_retriever_node(state: MessagesState) -> Command[Literal["supervisor"]]:
-    result = basic_sample_info_retriever.invoke(state)
+async def basic_sample_info_retriever_node(state: MessagesState, tools = TOOLSET1, func = basic_sample_info) -> Command[Literal["supervisor"]]:
+    basic_sample_info_retriever = await create_worker(tools, func)
+
+    # result = basic_sample_info_retriever.invoke(state)
+    result = await basic_sample_info_retriever.ainvoke(state)
+    print(result)
+    response = result["messages"][-1].content
     return Command(
         update={
             "messages": [
-                HumanMessage(content=result["messages"][-1].content, name="basic_sample_info_retriever")
-            ]
+                HumanMessage(content=response, name="basic_sample_info_retriever")
+            ],
+            "resource": result["resource"]
         },
         goto="supervisor",
     )
 
-def descendant_metadata_retriever_node(state: MessagesState) -> Command[Literal["supervisor"]]:
-    result = descendant_metadata_retriever.invoke(state)
-    return Command(
-        update={
-            "messages": [
-                HumanMessage(content=result["messages"][-1].content, name="descendant_metadata_retriever")
-            ]
-        },
-        goto="supervisor",
-    )
+# def descendant_metadata_retriever_node(state: MessagesState) -> Command[Literal["supervisor"]]:
+#     result = descendant_metadata_retriever.invoke(state)
+#     return Command(
+#         update={
+#             "messages": [
+#                 HumanMessage(content=result["messages"][-1].content, name="descendant_metadata_retriever")
+#             ]
+#         },
+#         goto="supervisor",
+#     )
 
 def data_summarizer_node(state: MessagesState) -> Command[Literal["responder"]]:
     # messages = [
@@ -195,17 +204,17 @@ def data_summarizer_node(state: MessagesState) -> Command[Literal["responder"]]:
         goto="responder",
     )
 
-def link_retriever_node(state: MessagesState, tools: List[str], tools_description: dict) -> Command[Literal["supervisor"]]:
+# def link_retriever_node(state: MessagesState, tools: List[str], tools_description: dict) -> Command[Literal["supervisor"]]:
 
-    result = link_retriever.invoke(state)
-    return Command(
-        update={
-            "messages": [
-                HumanMessage(content=result["messages"][-1].content, name="link_retriever")
-            ]
-        },
-        goto="supervisor",
-    )
+#     result = link_retriever.invoke(state)
+#     return Command(
+#         update={
+#             "messages": [
+#                 HumanMessage(content=result["messages"][-1].content, name="link_retriever")
+#             ]
+#         },
+#         goto="supervisor",
+#     )
 
 def responder_node(state: MessagesState) -> Command[Literal["data_summarizer","response_formatter","validator","FINISH"]]:
 
@@ -237,7 +246,8 @@ def responder_node(state: MessagesState) -> Command[Literal["data_summarizer","r
     return Command(update={
             "messages":[
                 HumanMessage(content=response.aggregatedMessages,user_query=user_query, available_workers=available_workers)
-            ]
+            ],
+            "resource": state["resource"]
         },goto=goto)
 
 def validator_node(state: AgentState) -> Command[Literal["responder"]]:
@@ -264,7 +274,7 @@ def validator_node(state: AgentState) -> Command[Literal["responder"]]:
 
 def response_formatter_node(state: MessagesState) -> Command[Literal["responder"]]:
     user_query = state["messages"][-1].user_query
-    result = baml.FormatResponse(user_query,state["messages"][-1].content)
+    result = baml.FormatResponse(user_query,state["messages"][-1].content, resources = state["resource"])
     print(result)
     goto = result.Next_worker
     name = "response_formatter"
@@ -288,9 +298,9 @@ def sampleRetrieverGraph(state: MessagesState, memory = None):
     builder.add_edge(START, "supervisor")
     builder.add_node("supervisor", supervisor_node)
     builder.add_node("basic_sample_info_retriever", basic_sample_info_retriever_node)
-    builder.add_node("descendant_metadata_retriever", descendant_metadata_retriever_node)
+    # builder.add_node("descendant_metadata_retriever", descendant_metadata_retriever_node)
     builder.add_node("data_summarizer", data_summarizer_node)
-    builder.add_node("link_retriever", link_retriever_node)
+    # builder.add_node("link_retriever", link_retriever_node)
     builder.add_node("validator", validator_node)
     builder.add_node("responder", responder_node)
     builder.add_node("response_formatter", response_formatter_node)

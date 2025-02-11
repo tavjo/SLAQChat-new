@@ -39,27 +39,115 @@ def all_succeeded(checks: Dict[CheckName, Check]) -> bool:
 
 
 
+class Agent(BaseModel):
+    agent: str
+    role: str
+    messages: "Messages"
+    resource: "ResourceBox"
+    toolbox: Optional[List[str]] = None
+    tools_description: Optional[Dict[str, str]] = None
+
 class DataSummarizer(BaseModel):
     Next_worker: str
     summary: str
+    messages: "Messages"
+    justification: str
+
+class Messages(BaseModel):
+    system_message: str
     user_query: str
+    aggredatedMessages: Optional[List[str]] = None
+
+class Metadata(BaseModel):
+    UID: Optional[str] = None
+    Name: Optional[str] = None
+    ID: Optional[str] = None
+    DateOfBirth: Optional[str] = None
+    Sex: Optional[str] = None
+    Species: Optional[str] = None
+    Origin: Optional[str] = None
+    Facility: Optional[str] = None
+    Notes: Optional[str] = None
+    Contact: Optional[str] = None
+    Scientist: Optional[str] = None
+    Publish_uri: Optional[str] = None
+    CoScientist: Optional[str] = None
+    Treatment1: Optional[str] = None
+    Treatment1Type: Optional[str] = None
+    Treatment1Route: Optional[str] = None
+    Treatment1Date: Optional[str] = None
+    Treatment1Dose: Optional[str] = None
+    Treatment1DoseUnits: Optional[str] = None
+    Treatment2: Optional[str] = None
+    Treatment2Type: Optional[str] = None
+    Treatment2Route: Optional[str] = None
+    Treatment2Date: Optional[str] = None
+    Treatment2Dose: Optional[str] = None
+    Treatment2DoseUnits: Optional[str] = None
+    NecropsyDate: Optional[str] = None
+    Cohort: Optional[str] = None
+    Supplier: Optional[str] = None
+    Treatment3: Optional[str] = None
+    Treatment3Type: Optional[str] = None
+    Protocol: Optional[str] = None
+    Study: Optional[str] = None
+    Funder: Optional[str] = None
+    TotalCFU: Optional[str] = None
+    LungCFU: Optional[str] = None
+    LymphNodeCFU: Optional[str] = None
+    TotalPathologyScore: Optional[str] = None
+    LungPathologyScore: Optional[str] = None
+    LymphNodePathologyScore: Optional[str] = None
+    CFUUnits: Optional[str] = None
+    AlternativeID: Optional[str] = None
+    StudyDesign: Optional[str] = None
+    Link_StudyDesign: Optional[str] = None
+    NewGranulomaCount: Optional[str] = None
+    nhp_id: Optional[str] = None
+    LINK: Optional[str] = None
+    START_DATE: Optional[str] = None
+    STOP_DATE: Optional[str] = None
+    TYPE: Optional[str] = None
+    PATIENT_ID: Optional[str] = None
+    EVENT_TYPE: Optional[str] = None
+    STUDY_DESIGN_NOTES: Optional[str] = None
+    DOSE: Optional[str] = None
+    TREATMENT_PARENT: Optional[str] = None
+    ORGAN_DETAIL: Optional[str] = None
+    ORGAN: Optional[str] = None
+    TREATMENT: Optional[str] = None
+    CFU: Optional[str] = None
+    NAME: Optional[str] = None
+    DOSE_UNITS: Optional[str] = None
+    SAMPLE_ID: Optional[str] = None
+    ROUTE: Optional[str] = None
+    PARENT: Optional[str] = None
+    Treatment3Route: Optional[str] = None
+    Treatment3Date: Optional[str] = None
+    Treatment3Dose: Optional[str] = None
+    Treatment3DoseUnits: Optional[str] = None
 
 class Navigator(BaseModel):
-    agent: str
-    user_query: str
+    agent: "Agent"
     next_tool: str
-    tool_arg: str
-    summedMessages: Union[List[str], Optional[None]]
+    tool_args: List[str]
+    justification: str
+
+class ResourceBox(BaseModel):
+    sample_metadata: Optional[List["Metadata"]] = None
+    protocol_link: Optional[str] = None
+    link: Optional[str] = None
 
 class Responder(BaseModel):
-    Next_worker: str
-    aggregatedMessages: str
-    user_query: str
+    Next_worker: "Agent"
+    justification: str
 
 class ResponseFormatter(BaseModel):
     Next_worker: str
     formattedResponse: str
     name: str
+    messages: "Messages"
+    justification: str
 
 class Resume(BaseModel):
     name: str
@@ -68,13 +156,13 @@ class Resume(BaseModel):
     skills: List[str]
 
 class Supervisor(BaseModel):
-    Next_worker: str
-    aggregatedMessages: str
-    user_query: str
+    Next_worker: "Agent"
+    justification: str
 
 class Validator(BaseModel):
-    Valid: bool
-    Clarifying_Question: str
-    originalMessage: str
-    Next_worker: str
     name: str
+    Valid: bool
+    Clarifying_Question: Optional[str] = None
+    justification: str
+    Next_worker: str
+    response: "Messages"

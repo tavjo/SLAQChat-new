@@ -34,27 +34,115 @@ class StreamState(BaseModel, Generic[T]):
     state: Literal["Pending", "Incomplete", "Complete"]
 
 
+class Agent(BaseModel):
+    agent: Optional[str] = None
+    role: Optional[str] = None
+    messages: Optional["Messages"] = None
+    resource: Optional["ResourceBox"] = None
+    toolbox: List[Optional[str]]
+    tools_description: Dict[str, Optional[str]]
+
 class DataSummarizer(BaseModel):
     Next_worker: Optional[str] = None
     summary: Optional[str] = None
+    messages: Optional["Messages"] = None
+    justification: Optional[str] = None
+
+class Messages(BaseModel):
+    system_message: Optional[str] = None
     user_query: Optional[str] = None
+    aggredatedMessages: List[Optional[str]]
+
+class Metadata(BaseModel):
+    UID: Optional[str] = None
+    Name: Optional[str] = None
+    ID: Optional[str] = None
+    DateOfBirth: Optional[str] = None
+    Sex: Optional[str] = None
+    Species: Optional[str] = None
+    Origin: Optional[str] = None
+    Facility: Optional[str] = None
+    Notes: Optional[str] = None
+    Contact: Optional[str] = None
+    Scientist: Optional[str] = None
+    Publish_uri: Optional[str] = None
+    CoScientist: Optional[str] = None
+    Treatment1: Optional[str] = None
+    Treatment1Type: Optional[str] = None
+    Treatment1Route: Optional[str] = None
+    Treatment1Date: Optional[str] = None
+    Treatment1Dose: Optional[str] = None
+    Treatment1DoseUnits: Optional[str] = None
+    Treatment2: Optional[str] = None
+    Treatment2Type: Optional[str] = None
+    Treatment2Route: Optional[str] = None
+    Treatment2Date: Optional[str] = None
+    Treatment2Dose: Optional[str] = None
+    Treatment2DoseUnits: Optional[str] = None
+    NecropsyDate: Optional[str] = None
+    Cohort: Optional[str] = None
+    Supplier: Optional[str] = None
+    Treatment3: Optional[str] = None
+    Treatment3Type: Optional[str] = None
+    Protocol: Optional[str] = None
+    Study: Optional[str] = None
+    Funder: Optional[str] = None
+    TotalCFU: Optional[str] = None
+    LungCFU: Optional[str] = None
+    LymphNodeCFU: Optional[str] = None
+    TotalPathologyScore: Optional[str] = None
+    LungPathologyScore: Optional[str] = None
+    LymphNodePathologyScore: Optional[str] = None
+    CFUUnits: Optional[str] = None
+    AlternativeID: Optional[str] = None
+    StudyDesign: Optional[str] = None
+    Link_StudyDesign: Optional[str] = None
+    NewGranulomaCount: Optional[str] = None
+    nhp_id: Optional[str] = None
+    LINK: Optional[str] = None
+    START_DATE: Optional[str] = None
+    STOP_DATE: Optional[str] = None
+    TYPE: Optional[str] = None
+    PATIENT_ID: Optional[str] = None
+    EVENT_TYPE: Optional[str] = None
+    STUDY_DESIGN_NOTES: Optional[str] = None
+    DOSE: Optional[str] = None
+    TREATMENT_PARENT: Optional[str] = None
+    ORGAN_DETAIL: Optional[str] = None
+    ORGAN: Optional[str] = None
+    TREATMENT: Optional[str] = None
+    CFU: Optional[str] = None
+    NAME: Optional[str] = None
+    DOSE_UNITS: Optional[str] = None
+    SAMPLE_ID: Optional[str] = None
+    ROUTE: Optional[str] = None
+    PARENT: Optional[str] = None
+    Treatment3Route: Optional[str] = None
+    Treatment3Date: Optional[str] = None
+    Treatment3Dose: Optional[str] = None
+    Treatment3DoseUnits: Optional[str] = None
 
 class Navigator(BaseModel):
-    agent: Optional[str] = None
-    user_query: Optional[str] = None
+    agent: Optional["Agent"] = None
     next_tool: Optional[str] = None
-    tool_arg: Optional[str] = None
-    summedMessages: Optional[Union[List[Optional[str]], Optional[None]]] = None
+    tool_args: List[Optional[str]]
+    justification: Optional[str] = None
+
+class ResourceBox(BaseModel):
+    sample_metadata: List["Metadata"]
+    protocol_link: Optional[str] = None
+    link: Optional[str] = None
 
 class Responder(BaseModel):
-    Next_worker: Optional[str] = None
-    aggregatedMessages: Optional[str] = None
-    user_query: Optional[str] = None
+    Next_worker: Optional["Agent"] = None
+    justification: Optional[str] = None
 
 class ResponseFormatter(BaseModel):
     Next_worker: Optional[str] = None
     formattedResponse: Optional[str] = None
     name: Optional[str] = None
+    messages: Optional["Messages"] = None
+    justification: Optional[str] = None
 
 class Resume(BaseModel):
     name: Optional[str] = None
@@ -63,13 +151,13 @@ class Resume(BaseModel):
     skills: List[Optional[str]]
 
 class Supervisor(BaseModel):
-    Next_worker: Optional[str] = None
-    aggregatedMessages: Optional[str] = None
-    user_query: Optional[str] = None
+    Next_worker: Optional["Agent"] = None
+    justification: Optional[str] = None
 
 class Validator(BaseModel):
+    name: Optional[str] = None
     Valid: Optional[bool] = None
     Clarifying_Question: Optional[str] = None
-    originalMessage: Optional[str] = None
+    justification: Optional[str] = None
     Next_worker: Optional[str] = None
-    name: Optional[str] = None
+    response: Optional["Messages"] = None

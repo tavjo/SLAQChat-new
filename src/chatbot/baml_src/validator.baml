@@ -1,21 +1,13 @@
-// Defining a data model.
-class Validator {
-    Valid bool @description("Whether the response is valid")
-    Clarifying_Question string @description("A clarifying question to the user if Valid is false")
-    originalMessage string @description("The message from the responder")
-    Next_worker string @description("The next worker to call : 'responder'")
-    name string @description("The name of the current worker : 'validator'")
-}
-
 // Create a function to validate the response from the responder.
-function ValidateResponse(user_query: string, response: string) -> Validator {
+function ValidateResponse(inputMessage: Messages) -> Validator {
   client MyClient
   prompt #"
     Validate the relevance of the response to the user's query. 
-    The next worker should always be the 'responder' unless otherwise specified in the response. Return the original message (response) as a string.
-    {{ user_query }}
-    {{ response }}
-
+    Focus on the latest message in the conversation.
+    Break down the user query into smaller parts and validate the response against each part.
+    The next worker should always be the 'responder' unless otherwise specified in the response. 
+    Justify your response.
+    {{ inputMessage }}
     {{ ctx.output_format }}
   "#
 }
@@ -24,9 +16,10 @@ function ValidateResponse(user_query: string, response: string) -> Validator {
 test myresponse {
     functions [ValidateResponse]
     args {
-        response #"
-            The protocol for the sample NHP-220630FLY-15 can be accessed [here](https://nextseek.mit.edu/seek/sop/uid=P.FLY-220823-V1_P---NHP_housing.docx/).
-        "#
-        user_query #"What is the protocol for the sample NHP-220630FLY-15?"#
+        inputMessage {
+            system_message #"You are a helpful assistant that is a part of a network of workers tasked with answering user questions about a data management platform called NExtSEEK."#
+            user_query #"Can you tell me more about the sample with UID PAV-220630FLY-1031?"#
+            aggredatedMessages [#"Can you tell me more about the sample with UID PAV-220630FLY-1031?"#, #"Summary: The sample with UID 'PAV-220630FLY-1031' is named '29518-190327' and is associated with the scientist JoAnne Flynn. It is categorized as a 'Scan' type sample and is linked to the protocol 'P.FLY-231011-V1_Patient-Visit-CD8.docx'. The sample was created on March 27, 2019, and is part of the Flynn Lab. Additional notes mention 'P0099'. The sample is a child of 'NHP-220630FLY-2'. More details can be found at the provided URI."#]
+        }
     }
 }

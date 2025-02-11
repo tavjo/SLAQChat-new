@@ -75,7 +75,7 @@ class BamlAsyncClient:
     
     async def FormatResponse(
         self,
-        user_query: str,inputMessage: str,
+        user_query: str,messages: types.Messages,resources: types.ResourceBox,
         baml_options: BamlCallOptions = {},
     ) -> types.ResponseFormatter:
       __tb__ = baml_options.get("tb", None)
@@ -88,7 +88,7 @@ class BamlAsyncClient:
       raw = await self.__runtime.call_function(
         "FormatResponse",
         {
-          "user_query": user_query,"inputMessage": inputMessage,
+          "user_query": user_query,"messages": messages,"resources": resources,
         },
         self.__ctx_manager.get(),
         tb,
@@ -98,7 +98,7 @@ class BamlAsyncClient:
     
     async def Navigate(
         self,
-        agent: str,toolbox: List[str],tools_description: Dict[str, str],user_query: str,summedMessages: Union[List[str], Optional[None]],
+        agent: types.Agent,
         baml_options: BamlCallOptions = {},
     ) -> types.Navigator:
       __tb__ = baml_options.get("tb", None)
@@ -111,7 +111,7 @@ class BamlAsyncClient:
       raw = await self.__runtime.call_function(
         "Navigate",
         {
-          "agent": agent,"toolbox": toolbox,"tools_description": tools_description,"user_query": user_query,"summedMessages": summedMessages,
+          "agent": agent,
         },
         self.__ctx_manager.get(),
         tb,
@@ -121,7 +121,7 @@ class BamlAsyncClient:
     
     async def Respond(
         self,
-        inputMessage: str,workers: List[str],workers_description: Dict[str, str],user_query: str,prev_worker: str,
+        inputMessage: types.Messages,workers: List[types.Agent],prev_worker: Optional[str],
         baml_options: BamlCallOptions = {},
     ) -> types.Responder:
       __tb__ = baml_options.get("tb", None)
@@ -134,7 +134,7 @@ class BamlAsyncClient:
       raw = await self.__runtime.call_function(
         "Respond",
         {
-          "inputMessage": inputMessage,"workers": workers,"workers_description": workers_description,"user_query": user_query,"prev_worker": prev_worker,
+          "inputMessage": inputMessage,"workers": workers,"prev_worker": prev_worker,
         },
         self.__ctx_manager.get(),
         tb,
@@ -144,7 +144,7 @@ class BamlAsyncClient:
     
     async def SummarizeData(
         self,
-        inputMessage: str,user_query: str,
+        inputMessage: types.Messages,resources: types.ResourceBox,
         baml_options: BamlCallOptions = {},
     ) -> types.DataSummarizer:
       __tb__ = baml_options.get("tb", None)
@@ -157,7 +157,7 @@ class BamlAsyncClient:
       raw = await self.__runtime.call_function(
         "SummarizeData",
         {
-          "inputMessage": inputMessage,"user_query": user_query,
+          "inputMessage": inputMessage,"resources": resources,
         },
         self.__ctx_manager.get(),
         tb,
@@ -167,7 +167,7 @@ class BamlAsyncClient:
     
     async def Supervise(
         self,
-        Messages: str,workers: Dict[str, str],
+        Messages: types.Messages,workers: List[types.Agent],
         baml_options: BamlCallOptions = {},
     ) -> types.Supervisor:
       __tb__ = baml_options.get("tb", None)
@@ -190,7 +190,7 @@ class BamlAsyncClient:
     
     async def ValidateResponse(
         self,
-        user_query: str,response: str,
+        inputMessage: types.Messages,
         baml_options: BamlCallOptions = {},
     ) -> types.Validator:
       __tb__ = baml_options.get("tb", None)
@@ -203,7 +203,7 @@ class BamlAsyncClient:
       raw = await self.__runtime.call_function(
         "ValidateResponse",
         {
-          "user_query": user_query,"response": response,
+          "inputMessage": inputMessage,
         },
         self.__ctx_manager.get(),
         tb,
@@ -254,7 +254,7 @@ class BamlStreamClient:
     
     def FormatResponse(
         self,
-        user_query: str,inputMessage: str,
+        user_query: str,messages: types.Messages,resources: types.ResourceBox,
         baml_options: BamlCallOptions = {},
     ) -> baml_py.BamlStream[partial_types.ResponseFormatter, types.ResponseFormatter]:
       __tb__ = baml_options.get("tb", None)
@@ -268,7 +268,8 @@ class BamlStreamClient:
         "FormatResponse",
         {
           "user_query": user_query,
-          "inputMessage": inputMessage,
+          "messages": messages,
+          "resources": resources,
         },
         None,
         self.__ctx_manager.get(),
@@ -285,7 +286,7 @@ class BamlStreamClient:
     
     def Navigate(
         self,
-        agent: str,toolbox: List[str],tools_description: Dict[str, str],user_query: str,summedMessages: Union[List[str], Optional[None]],
+        agent: types.Agent,
         baml_options: BamlCallOptions = {},
     ) -> baml_py.BamlStream[partial_types.Navigator, types.Navigator]:
       __tb__ = baml_options.get("tb", None)
@@ -299,10 +300,6 @@ class BamlStreamClient:
         "Navigate",
         {
           "agent": agent,
-          "toolbox": toolbox,
-          "tools_description": tools_description,
-          "user_query": user_query,
-          "summedMessages": summedMessages,
         },
         None,
         self.__ctx_manager.get(),
@@ -319,7 +316,7 @@ class BamlStreamClient:
     
     def Respond(
         self,
-        inputMessage: str,workers: List[str],workers_description: Dict[str, str],user_query: str,prev_worker: str,
+        inputMessage: types.Messages,workers: List[types.Agent],prev_worker: Optional[str],
         baml_options: BamlCallOptions = {},
     ) -> baml_py.BamlStream[partial_types.Responder, types.Responder]:
       __tb__ = baml_options.get("tb", None)
@@ -334,8 +331,6 @@ class BamlStreamClient:
         {
           "inputMessage": inputMessage,
           "workers": workers,
-          "workers_description": workers_description,
-          "user_query": user_query,
           "prev_worker": prev_worker,
         },
         None,
@@ -353,7 +348,7 @@ class BamlStreamClient:
     
     def SummarizeData(
         self,
-        inputMessage: str,user_query: str,
+        inputMessage: types.Messages,resources: types.ResourceBox,
         baml_options: BamlCallOptions = {},
     ) -> baml_py.BamlStream[partial_types.DataSummarizer, types.DataSummarizer]:
       __tb__ = baml_options.get("tb", None)
@@ -367,7 +362,7 @@ class BamlStreamClient:
         "SummarizeData",
         {
           "inputMessage": inputMessage,
-          "user_query": user_query,
+          "resources": resources,
         },
         None,
         self.__ctx_manager.get(),
@@ -384,7 +379,7 @@ class BamlStreamClient:
     
     def Supervise(
         self,
-        Messages: str,workers: Dict[str, str],
+        Messages: types.Messages,workers: List[types.Agent],
         baml_options: BamlCallOptions = {},
     ) -> baml_py.BamlStream[partial_types.Supervisor, types.Supervisor]:
       __tb__ = baml_options.get("tb", None)
@@ -415,7 +410,7 @@ class BamlStreamClient:
     
     def ValidateResponse(
         self,
-        user_query: str,response: str,
+        inputMessage: types.Messages,
         baml_options: BamlCallOptions = {},
     ) -> baml_py.BamlStream[partial_types.Validator, types.Validator]:
       __tb__ = baml_options.get("tb", None)
@@ -428,8 +423,7 @@ class BamlStreamClient:
       raw = self.__runtime.stream_function(
         "ValidateResponse",
         {
-          "user_query": user_query,
-          "response": response,
+          "inputMessage": inputMessage,
         },
         None,
         self.__ctx_manager.get(),

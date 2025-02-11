@@ -8,6 +8,8 @@ from sqlalchemy import text
 import os
 import sys
 import pandas as pd
+import asyncio
+from backend.Tools.services.helpers import async_wrap
 
 # Add the project root directory to the Python path
 project_root = os.path.abspath(os.path.join(os.path.dirname(__file__), '../../..'))
@@ -17,6 +19,7 @@ from backend.Tools.core.database import execute_query
 
 logger = logging.getLogger(__name__)
 
+@async_wrap
 def get_sample_name(sample_metadata: List[dict]) -> str | None:
     """
     Extract the sample Name from the fetched metadata.
@@ -40,7 +43,7 @@ def get_sample_name(sample_metadata: List[dict]) -> str | None:
         print("Error: Sample name not found.")
         return None
 
-    
+@async_wrap    
 def fetch_any_sample(uid: str) -> List[dict] | None:
     """
     Fetches the metadata for a given sample UID in the database.
@@ -59,7 +62,8 @@ def fetch_any_sample(uid: str) -> List[dict] | None:
     sample_metadata = execute_query(query.bindparams(uid=uid))
     return sample_metadata
 
-def retrieve_sample_info(uid: str) -> List[dict] | None:
+
+async def retrieve_sample_info(uid: str) -> List[dict] | None:
     """
     Retrieves the metadata for a given sample UID in the database.
 
@@ -70,7 +74,7 @@ def retrieve_sample_info(uid: str) -> List[dict] | None:
         List[dict] | None: A list containing the metadata dictionary for the sample or None if an error occurred.
     """
 
-    sample_metadata = fetch_any_sample(uid)
+    sample_metadata = await fetch_any_sample(uid)
     if not sample_metadata:
         logger.error("No metadata found.")
         return None
@@ -103,6 +107,7 @@ def retrieve_sample_info(uid: str) -> List[dict] | None:
         logger.error(f"Error saving NHP information to JSON: {e}")
         return None
 
+@async_wrap
 def fetchChildren(term: str) -> List[dict]:
     """
     Fetch the children metadata for a given term from the database.
@@ -125,8 +130,10 @@ def fetchChildren(term: str) -> List[dict]:
     except Exception as e:
         logger.error(f"Error fetching NHP metadata: {e}")
         return []
+    
 
-def fetch_all_descendants(term: str) -> List[str]:
+
+async def fetch_all_descendants(term: str) -> List[str]:
     """
     Fetch all descendants of a given sample.
 
@@ -138,7 +145,7 @@ def fetch_all_descendants(term: str) -> List[str]:
     """
     try:
         # Fetch the children metadata
-        children_metadata = fetchChildren(term)
+        children_metadata = await fetchChildren(term)
         if not children_metadata:
             return []
 
@@ -164,7 +171,7 @@ def fetch_all_descendants(term: str) -> List[str]:
         return []
 
 
-def fetchAllMetadata(term: str, filter: List[str] = None) -> List[dict]:
+async def fetchAllMetadata(term: str, filter: List[str] = None) -> List[dict]:
     """
     Fetch all metadata for a given term and its descendants. For the argument filter, choose one of the following (not exhaustive but most common):
             - 'PAV' = patient visit
@@ -184,7 +191,7 @@ def fetchAllMetadata(term: str, filter: List[str] = None) -> List[dict]:
     """
     try:
         # Fetch all descendant UUIDs
-        descendants_uuids = fetch_all_descendants(term)
+        descendants_uuids = await fetch_all_descendants(term)
         if filter:
             # Apply filter to the descendant UUIDs
             descendants_uuids = [child for child in descendants_uuids if any(f in child for f in filter)]
@@ -217,6 +224,7 @@ def fetchAllMetadata(term: str, filter: List[str] = None) -> List[dict]:
         logger.error(f"Error fetching metadata for term {term}: {e}")
         return []
 
+@async_wrap
 def add_links(sample_uid: str) -> str:
     """
     Constructs a link to the sample's page on the NExtSEEK website or constructs a link to download a protocol associated with a sample.
@@ -237,7 +245,8 @@ def add_links(sample_uid: str) -> str:
         print("No valid sample UID provided. Returning default link to NExtSEEK website.")
         return f"https://nextseek.mit.edu/"
 
-def fetch_protocol(uid: str) -> str | None:
+
+async def fetch_protocol(uid: str) -> str | None:
     """
     Fetch the protocol for a given sample UID if it exists.
 
@@ -247,13 +256,15 @@ def fetch_protocol(uid: str) -> str | None:
     Returns:
         str | None: The protocol link for the sample or None if no protocol is found.
     """
-    metadata = retrieve_sample_info(uid)
+    metadata = await retrieve_sample_info(uid)
     protocol_uid = metadata[0]["Protocol"] if metadata[0]["Protocol"] else None
     if protocol_uid:
-        return add_links(protocol_uid)
+        links = await add_links(protocol_uid)
+        return links
     else:
         return None
 
+@async_wrap
 def get_uids_by_type(type: str) -> List[str]:
     """
     Get all UIDs of a given sample type.
@@ -272,6 +283,7 @@ def get_uids_by_type(type: str) -> List[str]:
     uids = execute_query(query.bindparams(type=type), 'DB_NAME')
     return uids
 
+@async_wrap
 def get_uids_by_type_and_terms(type: str, terms: List[str]) -> List[str]:
     """
     Get all UIDs of a given type with these terms in the json_metadata.
@@ -292,6 +304,7 @@ def get_uids_by_type_and_terms(type: str, terms: List[str]) -> List[str]:
     uids = execute_query(query.bindparams(type=type, terms=terms), 'DB_NAME')
     return uids
 
+@async_wrap
 def get_metadata_by_uids(uids: List[str]) -> List[dict]:
     """
     Get all metadata for a given list of UIDs.
@@ -310,7 +323,8 @@ def get_metadata_by_uids(uids: List[str]) -> List[dict]:
     metadata = execute_query(query.bindparams(uids=uids), 'DB_NAME')
     return metadata
 
-def get_metadata_by_type(type: str) -> List[dict]:
+
+async def get_metadata_by_type(type: str) -> List[dict]:
     """
     Get all metadata of a given sample type.
     args:
@@ -318,9 +332,11 @@ def get_metadata_by_type(type: str) -> List[dict]:
     returns:
         List[dict]: A list of metadata dictionaries for the given sample type.
     """
-    return get_metadata_by_uids(get_uids_by_type(type))
+    uids = await get_uids_by_type(type)
+    metadata = await get_metadata_by_uids(uids)
+    return metadata
 
-def get_metadata_by_type_and_terms(type: str, terms: List[str]) -> List[dict]:
+async def get_metadata_by_type_and_terms(type: str, terms: List[str]) -> List[dict]:
     """
     Get all metadata of a given sample type with these terms in the json_metadata.
     args:
@@ -329,4 +345,6 @@ def get_metadata_by_type_and_terms(type: str, terms: List[str]) -> List[dict]:
     returns:
         List[dict]: A list of metadata dictionaries for the given sample type with the terms in the json_metadata.
     """
-    return get_metadata_by_uids(get_uids_by_type_and_terms(type, terms))
+    uids = await get_uids_by_type_and_terms(type, terms)
+    metadata = await get_metadata_by_uids(uids)
+    return metadata

@@ -1,15 +1,10 @@
-class DataSummarizer {
-    Next_worker string @description("The next worker to call : 'responder'")
-    summary string @description("The summary of the input message")
-    user_query string @description("The user's query")
-}
 
-function SummarizeData(inputMessage: string, user_query: string) -> DataSummarizer {
+function SummarizeData(inputMessage: Messages, resources: ResourceBox) -> DataSummarizer {
     client MyClient
     prompt #"
-    Summarize the input message in a concise manner. Ensure the summary remains relevant to the user's query. If the input message is already concise, return it as the summary.
+    Summarize the input message in a concise manner. Ensure the summary remains relevant to the user's query. If the input message is already concise, return the input message as the summary. Justify your response.
     {{inputMessage}}
-    {{user_query}}
+    {{resources}}
     {{ctx.output_format}}
     "#
 }
