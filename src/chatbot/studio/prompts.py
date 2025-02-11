@@ -8,7 +8,9 @@ OPTIONS = MEMBERS + ["responder"]
 
 WORKERS = ["validator", "data_summarizer", "FINISH"]
 
-
+SYSTEM_MESSAGE = (
+    "You are a helpful assistant tasked with answering user questions about a data management platform called NExtSEEK."
+)
 
 # System messages
 # SYS_MSG_SUPERVISOR = (

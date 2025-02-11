@@ -38,7 +38,6 @@ class Agent(BaseModel):
     agent: Optional[str] = None
     role: Optional[str] = None
     messages: Optional["Messages"] = None
-    resource: Optional["ResourceBox"] = None
     toolbox: List[Optional[str]]
     tools_description: Dict[str, Optional[str]]
 
@@ -52,6 +51,7 @@ class Messages(BaseModel):
     system_message: Optional[str] = None
     user_query: Optional[str] = None
     aggredatedMessages: List[Optional[str]]
+    resource: Optional["ResourceBox"] = None
 
 class Metadata(BaseModel):
     UID: Optional[str] = None

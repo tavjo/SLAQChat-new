@@ -1,7 +1,7 @@
-from langchain_core.messages import BaseMessage, HumanMessage, AIMessage
+from langchain_core.messages import BaseMessage, HumanMessage
 from langchain_openai import ChatOpenAI
 
-from langgraph.graph import START, StateGraph, MessagesState, END
+from langgraph.graph import START, StateGraph, END, MessagesState
 from langgraph.prebuilt import tools_condition, ToolNode
 from typing import List, Optional
 from typing_extensions import Annotated, TypedDict, Sequence, Literal
@@ -12,24 +12,19 @@ from langgraph.types import Command
 import sys
 import os
 from baml_client import b as baml
-# import nest_asyncio
-# nest_asyncio.apply()
+
 
 from studio.prompts import (
-    # SYS_MSG_TOOLSET_1,
-    # SYS_MSG_TOOLSET_2,
-    SYS_MSG_TOOLSET_3,
-    # SYS_MSG_LINK_ADDER,
+    SYSTEM_MESSAGE,
+    SYS_MSG_TOOLSET_3
 )
 
 # Add the project root directory to the Python path
 project_root = os.path.abspath(os.path.join(os.path.dirname(__file__), '../../..'))
 sys.path.append(project_root)
 
-# from backend.Tools.services.sample_service import get_sample_name, fetch_protocol, retrieve_sample_info, fetchChildren, fetch_all_descendants, add_links
 
 from backend.Tools.services.llm_service import summarize_sample_info
-# import asyncio
 from src.chatbot.studio.basic_sample_info import basic_sample_info, TOOLSET1
 
 # import env variables
@@ -39,16 +34,65 @@ load_dotenv()
 os.environ["OPENAI_API_KEY"] = os.getenv("OPENAI_API_KEY")
 
 
+class ResourceBox(TypedDict):
+    """The resources available to the agent."""
+    sample_metadata: list[dict]
+    protocol: str
+    link: Optional[str] = None
+
+class WorkerState(TypedDict):
+    agent: str
+    role: str
+    messages: MessagesState
+    toolbox: list[str]
+    tools_description: dict[str, str]
+
+class MessageState(TypedDict):
+    system_message: str
+    user_query: str
+    aggregatedMessages: list[str]
+    available_workers: list[WorkerState]
+    resource: ResourceBox
+
 def supervisor_node(state: MessagesState) -> Command[Literal["basic_sample_info_retriever","responder"]]:
-    work_groupA = {
-    # "descendant_metadata_retriever":"Retrieve children and descendants of a sample",
-    # "link_retriever": "Retrieve link for the sample and/or the associated protocol",
-    "basic_sample_info_retriever": "Retrieve basic metadata for the sample",
-    "responder": "Validate and respond to the user's query",
-}
-    if "available_workers" not in state:
+    work_groupA = [
+        {"agent": "basic_sample_info_retriever",
+        "role": "Retrieve basic metadata for the sample",
+        "messages": {
+            "system_message": SYSTEM_MESSAGE,
+            "user_query": state["messages"][0].content,
+            "aggregatedMessages": [msg.content for msg in state["messages"]]
+        },
+        "toolbox": ["get_sample_name", "retrieve_sample_info", "fetch_protocol", "fetchChildren", "fetch_all_descendants", "add_links"],
+        "tools_description": {
+                    "get_sample_name": "Get the name of the sample.",
+                    "retrieve_sample_info": "Retrieve the sample information for a given sample UID.",
+                    "fetch_protocol": "Fetch the protocol for a given sample UID.",
+                    "fetchChildren": "Fetch the children of a given sample UID.",
+                    "fetch_all_descendants": "Fetch all descendants of a given sample UID.",
+                    "add_links": "Add links to the sample information.",
+                }},
+        {
+            "agent": "responder",
+            "role": "Validate and respond to the user's query",
+            "messages": {
+            "system_message": SYSTEM_MESSAGE,
+            "user_query": state["messages"][0].content,
+            "aggregatedMessages": [msg.content for msg in state["messages"]]
+        },
+            "toolbox": ["data_summarizer", "response_formatter", "validator", "FINISH"],
+            "tools_description": {
+                "data_summarizer": "Summarize the data if response is longer than 100 words",
+                "response_formatter": "Format the response if data_summarizer is used",
+                "validator": "Validate the response",
+                "FINISH": "Finish the conversation"
+            }
+        }
+    ]
+    if "available_workers" not in state or not state["available_workers"]:
         state["available_workers"] = work_groupA  # make a copy to update dynamically
 
+    available_workers_list = [i["agent"] for i in state["available_workers"]]
     available_workers = state["available_workers"]
     # Step 1: Aggregate responses from all agents
     aggregated_agent_responses = ""
@@ -60,31 +104,33 @@ def supervisor_node(state: MessagesState) -> Command[Literal["basic_sample_info_
         else:
             aggregated_agent_responses += f"{msg.content}\n"
     
-    response = baml.Supervise(aggregated_agent_responses, available_workers)
-    goto = response.Next_worker
-    print(f"Next Worker: {goto}")
-    if goto in available_workers:
-        del available_workers[goto]
-    print(f"Available Workers: {available_workers}")
-    # Save the updated available_workers back to state
-    state["available_workers"] = available_workers
-    return Command(update={
-        "messages":[
-            HumanMessage(content=response.aggregatedMessages,user_query=response.user_query)
-        ],
+    if "resource" not in state or not state["resource"]:
+        state["resource"] = {}
+    
+    messages = {
+        "system_message": SYSTEM_MESSAGE,
+        "user_query": state["messages"][0].content,
+        "aggregatedMessages": state["messages"] + [aggregated_agent_responses],
+        "available_workers": available_workers,
         "resource": state["resource"]
+    }
+    response = baml.Supervise(messages, available_workers)
+    goto = response.Next_worker.agent
+    print(f"Next Worker: {goto}\nJustification: {response.justification}")
+    if goto in available_workers_list:
+        available_workers_list.remove(goto)
+    print(f"Available Workers: {available_workers_list}")
+    available_workers = [i for i in available_workers_list]
+    # Save the updated available_workers back to state
+    # state["available_workers"] = available_workers
+    return Command(update={
+        "available_workers": available_workers
         },goto=goto)
 
 
 ########################################################
 # Create agents
 ########################################################
-
-class ResourceBox(TypedDict):
-    """The resources available to the agent."""
-    sample_metadata: list[dict]
-    protocol: str
-    link: Optional[str] = None
 
 class AgentState(TypedDict):
     """The state of the agent."""
@@ -137,17 +183,15 @@ async def create_worker(tools, func):
 ########################################################
 
 
-# toolset2 = [fetchChildren, fetch_all_descendants]#fetchAllMetadata
 
 toolset3 = [summarize_sample_info]
 
-# toolset4 = [add_links, fetch_protocol]
 
 ########################################################
 # LLMs with bound tools
 ########################################################
 
-llm = ChatOpenAI(model="gpt-4o", temperature=0)
+llm = ChatOpenAI(model="gpt-4o-mini", temperature=0)
 
 
 # Toolset 1: Retrieve sample name and information
@@ -155,10 +199,7 @@ llm = ChatOpenAI(model="gpt-4o", temperature=0)
 
 
 ## build agents
-# basic_sample_info_retriever = create_agent(llm, toolset1, SYS_MSG_TOOLSET_1)
-# descendant_metadata_retriever = create_agent(llm, toolset2, SYS_MSG_TOOLSET_2)
 data_summarizer = create_agent(llm, toolset3, SYS_MSG_TOOLSET_3)
-# link_retriever = create_agent(llm, toolset4, SYS_MSG_LINK_ADDER)
 
 async def basic_sample_info_retriever_node(state: MessagesState, tools = TOOLSET1, func = basic_sample_info) -> Command[Literal["supervisor"]]:
     basic_sample_info_retriever = await create_worker(tools, func)
@@ -169,127 +210,163 @@ async def basic_sample_info_retriever_node(state: MessagesState, tools = TOOLSET
     response = result["messages"][-1].content
     return Command(
         update={
-            "messages": [
-                HumanMessage(content=response, name="basic_sample_info_retriever")
+            "messages":[
+                HumanMessage(content=f"The results are: {response}", name="basic_sample_info_retriever")
             ],
-            "resource": result["resource"]
+            "resource":result["result"]
         },
         goto="supervisor",
     )
 
-# def descendant_metadata_retriever_node(state: MessagesState) -> Command[Literal["supervisor"]]:
-#     result = descendant_metadata_retriever.invoke(state)
-#     return Command(
-#         update={
-#             "messages": [
-#                 HumanMessage(content=result["messages"][-1].content, name="descendant_metadata_retriever")
-#             ]
-#         },
-#         goto="supervisor",
-#     )
-
 def data_summarizer_node(state: MessagesState) -> Command[Literal["responder"]]:
-    # messages = [
-    #     HumanMessage(content=state["messages"][-1].content, name="data_summarizer")
-    # ]
-    # result = data_summarizer.invoke(messages)
-    user_query = state["messages"][-1].user_query
-    result = baml.SummarizeData(state["messages"][-1].content, user_query)
+    # user_query = state["messages"][-1].user_query
+    messages = {
+        "system_message": SYSTEM_MESSAGE,
+        "user_query": state["messages"][0].content,
+        "aggregatedMessages": [msg.content for msg in state["messages"]]
+        }
+    result = baml.SummarizeData(messages)
+    reource = result.messages.resource
     return Command(
         update={
-            "messages": [
-                HumanMessage(content=result.summary, name="data_summarizer", user_query=user_query)
-            ]
-        },
+            "messages":[
+                HumanMessage(content=result.summary, name="data_summarizer")
+                ],
+            "resource":reource
+            },
         goto="responder",
     )
 
-# def link_retriever_node(state: MessagesState, tools: List[str], tools_description: dict) -> Command[Literal["supervisor"]]:
-
-#     result = link_retriever.invoke(state)
-#     return Command(
-#         update={
-#             "messages": [
-#                 HumanMessage(content=result["messages"][-1].content, name="link_retriever")
-#             ]
-#         },
-#         goto="supervisor",
-#     )
-
 def responder_node(state: MessagesState) -> Command[Literal["data_summarizer","response_formatter","validator","FINISH"]]:
-
-    work_groupB = {
-    "data_summarizer":"1.(optional) Summarize the data if response is longer than 100 words",
-    "response_formatter":"2.(optional) Format the response if data_summarizer is used",
-    "validator":"3.Validate the response",
-    "FINISH":"4.Finish the conversation"
-    }
+    work_groupB = [
+        {
+            "agent": "data_summarizer",
+            "role": "1.(optional) Summarize the data if response is longer than 100 words",
+            "messages": {
+                "system_message": SYSTEM_MESSAGE,
+                "user_query": state["messages"][0].content,
+                "aggregatedMessages": [msg.content for msg in state["messages"]]
+            },
+            "toolbox": None,
+            "tools_description": None
+        },
+        {
+            "agent": "response_formatter",
+            "role": "2.(optional) Format the response if data_summarizer is used",
+            "messages": {
+                "system_message": SYSTEM_MESSAGE,
+                "user_query": state["messages"][0].content,
+                "aggregatedMessages": [msg.content for msg in state["messages"]]
+            },
+            "toolbox": None,
+            "tools_description": None
+        },
+        {
+            "agent": "validator",
+            "role": "3.Validate the response",
+            "messages": {
+                "system_message": SYSTEM_MESSAGE,
+                "user_query": state["messages"][0].content,
+                "aggregatedMessages": [msg.content for msg in state["messages"]]
+            },
+            "toolbox": None,
+            "tools_description": None
+        },
+        {
+            "agent": "FINISH",
+            "role": "4.Finish the conversation",
+            "messages": {
+                "system_message": SYSTEM_MESSAGE,
+                "user_query": state["messages"][0].content,
+                "aggregatedMessages": [msg.content for msg in state["messages"]]
+            },
+            "toolbox": None,
+            "tools_description": None
+        }
+    ]
         # Initialize the available workers map if not already in state
-    if "available_workers" not in state:
+    if "available_workers" not in state or not state["available_workers"]:
         state["available_workers"] = work_groupB  # make a copy to update dynamically
 
     available_workers = state["available_workers"]
+    available_workers_list = [i["agent"] for i in available_workers]
     # Aggregate the content of each HumanMessage into a single string
-    inputMessage = state["messages"][-1].content
-    user_query = state["messages"][-1].user_query
-    prev_worker = state["messages"][-1].name if state["messages"][-1].name else ""
+    # inputMessage = state["messages"][-1].content
+    # user_query = state["messages"][-1].user_query
     # inputMessage = "\n".join([msg.content for msg in state["messages"]])
     # print(inputMessage)
-    response = baml.Respond(inputMessage, workers=list(available_workers.keys()), workers_description=available_workers, user_query=user_query, prev_worker=prev_worker)
-    goto = response.Next_worker
-    print(f"Next Worker: {goto}")
-    if goto in available_workers:
-        del available_workers[goto]
-    print(f"Available Workers: {available_workers}")
+    messages = {
+        "system_message": SYSTEM_MESSAGE,
+        "user_query": state["messages"][0].content,
+        "aggregatedMessages": [msg.content for msg in state["messages"]]
+    }
+    response = baml.Respond(messages, workers=available_workers)
+    goto = response.Next_worker.agent
+    print(f"Next Worker: {goto}\nJustification: {response.justification}")
+    if goto in available_workers_list:
+        available_workers_list.remove(goto)
+    print(f"Available Workers: {available_workers_list}")
+    available_workers = [i for i in available_workers_list]
     # Save the updated available_workers back to state
-    state["available_workers"] = available_workers
+    # state["available_workers"] = available_workers
     return Command(update={
             "messages":[
-                HumanMessage(content=response.aggregatedMessages,user_query=user_query, available_workers=available_workers)
+                HumanMessage(content=messages.aggregatedMessages, name="responder", user_query = messages.user_query)
             ],
-            "resource": state["resource"]
+            "available_workers": available_workers
         },goto=goto)
 
 def validator_node(state: AgentState) -> Command[Literal["responder"]]:
     # # Aggregate the content of each HumanMessage into a single string
     # aggregated_messages = "\n".join([msg.content for msg in state["messages"]])
-    aggregated_messages = state["messages"][-1].content
-    user_query = state["messages"][-1].user_query
-    print(user_query)
-    response = baml.ValidateResponse(user_query=user_query, response=aggregated_messages)
-    goto = response.Next_worker
-    print(response.name)
+    # aggregated_messages = state["messages"][-1].content
+    messages = {
+        "system_message": SYSTEM_MESSAGE,
+        "user_query": state["messages"][0].content,
+        "aggregatedMessages": [msg.content for msg in state["messages"]]
+    }
+    response = baml.ValidateResponse(response=messages)
+    goto = "responder"
+    print(f"Agent: {response.name}\nJustification: {response.justification}")
     if response.Valid:
         new_aggregate = response.originalMessage
     else:
         new_aggregate = response.Clarifying_Question
     return Command(
         update={
-            "messages": [
-                HumanMessage(content=new_aggregate, name="validator", user_query=user_query)
-            ]
+            "messages":[
+                HumanMessage(content=new_aggregate, name="validator")
+            ],
+            "resource":response.originalMessage.resource
         },
         goto=goto,
     )
 
 def response_formatter_node(state: MessagesState) -> Command[Literal["responder"]]:
-    user_query = state["messages"][-1].user_query
-    result = baml.FormatResponse(user_query,state["messages"][-1].content, resources = state["resource"])
+    # user_query = state["messages"][-1].user_query]
+    messages = {
+    "system_message": SYSTEM_MESSAGE,
+    "user_query": state["messages"][0].content,
+    "aggregatedMessages": [msg.content for msg in state["messages"]]
+}
+    result = baml.FormatResponse(messages)
     print(result)
-    goto = result.Next_worker
+    print(f"Agent: {result.name}\nJustification: {result.justification}")
+    goto = "responder"
     name = "response_formatter"
     return Command(
         update={
-            "messages": [
-                HumanMessage(content=result.formattedResponse, name=name, user_query=user_query)
-            ]
+            "messages":[
+                HumanMessage(content=result.formattedResponse, name=name)
+            ],
+            "resource":result.messages.resource
         },
         goto=goto,
     )
 
 def finish_node(state: MessagesState) -> Command[Literal["__end__"]]:
-    messages = state["messages"][-1].content
-    print(messages)
+    reply = state["messages"][-1].content
+    print(reply)
     goto = END
     return Command(goto=goto)    
 
@@ -298,14 +375,11 @@ def sampleRetrieverGraph(state: MessagesState, memory = None):
     builder.add_edge(START, "supervisor")
     builder.add_node("supervisor", supervisor_node)
     builder.add_node("basic_sample_info_retriever", basic_sample_info_retriever_node)
-    # builder.add_node("descendant_metadata_retriever", descendant_metadata_retriever_node)
     builder.add_node("data_summarizer", data_summarizer_node)
-    # builder.add_node("link_retriever", link_retriever_node)
     builder.add_node("validator", validator_node)
     builder.add_node("responder", responder_node)
     builder.add_node("response_formatter", response_formatter_node)
     builder.add_node("FINISH", finish_node)
-    # builder.add_edge("supervisor", "responder")
     builder.add_edge("responder", "FINISH")
     builder.add_edge("FINISH", END)
 

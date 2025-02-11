@@ -110,13 +110,13 @@ class Messages {
     system_message string @description("The system message")
     user_query string @description("The user message")
     aggredatedMessages string[]? @description("The aggregated messages in the conversation")
+    resource ResourceBox? @description("The resources available to the agent")
 }
 
 class Agent {
     agent string @description("The name of the agent")
     role string @description("The role of the agent")
     messages Messages @description("The messages in the conversation")
-    resource ResourceBox @description("The resources available to the agent")
     toolbox string[]? @description("The toolbox of the agent")
     tools_description map<string, string>? @description("The description of the tools in the toolbox")
 }

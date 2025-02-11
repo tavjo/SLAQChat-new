@@ -72,7 +72,7 @@ class BamlSyncClient:
     
     def FormatResponse(
         self,
-        user_query: str,messages: types.Messages,resources: types.ResourceBox,
+        messages: types.Messages,
         baml_options: BamlCallOptions = {},
     ) -> types.ResponseFormatter:
       __tb__ = baml_options.get("tb", None)
@@ -85,7 +85,7 @@ class BamlSyncClient:
       raw = self.__runtime.call_function_sync(
         "FormatResponse",
         {
-          "user_query": user_query,"messages": messages,"resources": resources,
+          "messages": messages,
         },
         self.__ctx_manager.get(),
         tb,
@@ -118,7 +118,7 @@ class BamlSyncClient:
     
     def Respond(
         self,
-        inputMessage: types.Messages,workers: List[types.Agent],prev_worker: Optional[str],
+        inputMessage: types.Messages,workers: List[types.Agent],
         baml_options: BamlCallOptions = {},
     ) -> types.Responder:
       __tb__ = baml_options.get("tb", None)
@@ -131,7 +131,7 @@ class BamlSyncClient:
       raw = self.__runtime.call_function_sync(
         "Respond",
         {
-          "inputMessage": inputMessage,"workers": workers,"prev_worker": prev_worker,
+          "inputMessage": inputMessage,"workers": workers,
         },
         self.__ctx_manager.get(),
         tb,
@@ -141,7 +141,7 @@ class BamlSyncClient:
     
     def SummarizeData(
         self,
-        inputMessage: types.Messages,resources: types.ResourceBox,
+        inputMessage: types.Messages,
         baml_options: BamlCallOptions = {},
     ) -> types.DataSummarizer:
       __tb__ = baml_options.get("tb", None)
@@ -154,7 +154,7 @@ class BamlSyncClient:
       raw = self.__runtime.call_function_sync(
         "SummarizeData",
         {
-          "inputMessage": inputMessage,"resources": resources,
+          "inputMessage": inputMessage,
         },
         self.__ctx_manager.get(),
         tb,
@@ -252,7 +252,7 @@ class BamlStreamClient:
     
     def FormatResponse(
         self,
-        user_query: str,messages: types.Messages,resources: types.ResourceBox,
+        messages: types.Messages,
         baml_options: BamlCallOptions = {},
     ) -> baml_py.BamlSyncStream[partial_types.ResponseFormatter, types.ResponseFormatter]:
       __tb__ = baml_options.get("tb", None)
@@ -265,9 +265,7 @@ class BamlStreamClient:
       raw = self.__runtime.stream_function_sync(
         "FormatResponse",
         {
-          "user_query": user_query,
           "messages": messages,
-          "resources": resources,
         },
         None,
         self.__ctx_manager.get(),
@@ -314,7 +312,7 @@ class BamlStreamClient:
     
     def Respond(
         self,
-        inputMessage: types.Messages,workers: List[types.Agent],prev_worker: Optional[str],
+        inputMessage: types.Messages,workers: List[types.Agent],
         baml_options: BamlCallOptions = {},
     ) -> baml_py.BamlSyncStream[partial_types.Responder, types.Responder]:
       __tb__ = baml_options.get("tb", None)
@@ -329,7 +327,6 @@ class BamlStreamClient:
         {
           "inputMessage": inputMessage,
           "workers": workers,
-          "prev_worker": prev_worker,
         },
         None,
         self.__ctx_manager.get(),
@@ -346,7 +343,7 @@ class BamlStreamClient:
     
     def SummarizeData(
         self,
-        inputMessage: types.Messages,resources: types.ResourceBox,
+        inputMessage: types.Messages,
         baml_options: BamlCallOptions = {},
     ) -> baml_py.BamlSyncStream[partial_types.DataSummarizer, types.DataSummarizer]:
       __tb__ = baml_options.get("tb", None)
@@ -360,7 +357,6 @@ class BamlStreamClient:
         "SummarizeData",
         {
           "inputMessage": inputMessage,
-          "resources": resources,
         },
         None,
         self.__ctx_manager.get(),

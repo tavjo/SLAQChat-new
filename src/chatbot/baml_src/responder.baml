@@ -1,5 +1,5 @@
 // Create a function to respond to the user's query.
-function Respond(inputMessage: Messages, workers: Agent[], prev_worker: string?) -> Responder {
+function Respond(inputMessage: Messages, workers: Agent[]) -> Responder {
     client MyClient
       prompt #"
         Sequentially use the workers in the order of {{ workers }} to respond to the user's query. 
@@ -7,7 +7,6 @@ function Respond(inputMessage: Messages, workers: Agent[], prev_worker: string?)
         Never return the same worker name multiple times.
         Once you have a response from the "validator", the next worker must be "FINISH".
         {{inputMessage}}
-        {{prev_worker}}
         {{ ctx.output_format }}
   "#
 }

@@ -1,10 +1,9 @@
 
-function SummarizeData(inputMessage: Messages, resources: ResourceBox) -> DataSummarizer {
+function SummarizeData(inputMessage: Messages) -> DataSummarizer {
     client MyClient
     prompt #"
     Summarize the input message in a concise manner. Ensure the summary remains relevant to the user's query. If the input message is already concise, return the input message as the summary. Justify your response.
     {{inputMessage}}
-    {{resources}}
     {{ctx.output_format}}
     "#
 }

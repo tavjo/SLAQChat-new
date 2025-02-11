@@ -1,9 +1,9 @@
-function FormatResponse(user_query: string, messages: Messages, resources: ResourceBox) -> ResponseFormatter {
+function FormatResponse(messages: Messages) -> ResponseFormatter {
 
     client MyClient
         prompt #"
 
-        Use the resources {{resources}} and the messages {{messages}} in the conversation as ground truth to answer the user's query {{user_query}}. 
+        Use the resources and the messages {{messages}} in the conversation as ground truth to answer the user's query. 
         Never make up information or make assumptions. Only use the information provided in the resources and the messages.
         Maintain any special formatting in your response such as urls/links, json format etc. as provided in the resources while briefly summarizing the information in the messages.
         Your response should look like this:
