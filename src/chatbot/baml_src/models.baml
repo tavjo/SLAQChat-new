@@ -19,9 +19,9 @@ class Responder {
 
 class ResponseFormatter {
     Next_worker string @description("The next worker to call : responder")
-    formattedResponse string @description("The formatted response to the user")
+    formattedResponse string @description("Formatted response for the user")
     name string @description("The name of the current worker : response_formatter")
-    messages Messages @description("The messages in the conversation")
+    messages Messages @description("Conversation history and context")
     justification string @description("The justification for your response")
 }
 
@@ -31,9 +31,10 @@ class Supervisor {
 }
 
 class ResourceBox {
-    sample_metadata Metadata[]? @description("The metadata of the sample")
-    protocol_link string? @description("The link to download the protocol associated with a sample")
-    link string? @description("The link to the sample: https://nextseek.mit.edu/seek/sampletree/uid=<sample_uid>")
+    sample_metadata Metadata[]? @description("Sample metadata")
+    protocolUrl string? @description("Protocol download URL i.e.: https://nextseek.mit.edu/seek/sop/uid=<protocol_uid>")
+    sampleUrl string? @description("Sample URL i.e.: https://nextseek.mit.edu/seek/sampletree/uid=<sample_uid>")
+    UIDs string[]? @description("List of UIDs")
 }
 
 class Metadata {
@@ -109,7 +110,7 @@ class Metadata {
 class Messages {
     system_message string @description("The system message")
     user_query string @description("The user message")
-    aggredatedMessages string[]? @description("The aggregated messages in the conversation")
+    aggregatedMessages string[]? @description("The aggregated messages in the conversation")
     resource ResourceBox? @description("The resources available to the agent")
 }
 

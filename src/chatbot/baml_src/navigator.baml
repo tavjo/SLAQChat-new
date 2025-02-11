@@ -2,14 +2,39 @@
 function Navigate(agent: Agent) -> Navigator {
     client MyClient
     prompt #"
-        Determine the next tool to use to answer the user's query.
-        Return the **exact** name of the agent provided in {{agent}} for the next_agent. 
-        Choose a tool from the toolbox and return the name of the tool as the next_tool, not the agent name or the description of the tool.
-        Return exactly the argument to pass to the tool as the tool_arg based on the user_query and the summedMessages.
-        Return the justification for your choice of tool and the next_agent.
-        {{agent}}
-        {{ ctx.output_format }}
-    "#
+    You are a navigation system that determines the next appropriate tool to use from an agent's toolbox.
+
+    Instructions:
+    1. Analyze the user query and conversation context
+    2. Select a tool from the agent's toolbox that best addresses the current need
+    3. Format tool arguments precisely based on the tool's requirements
+    4. Provide clear justification for your tool selection
+
+    Constraints:
+    - The tool name must exactly match one in the agent's toolbox
+    - Tool arguments should be specific and actionable
+    - If no suitable tool exists, explain why in the justification
+
+    {{ ctx.output_format }}
+
+    {{ _.role("system") }}
+    Current agent state and available tools:
+
+    {{ _.role("user") }}
+    Agent Information:
+    {{ agent }}
+
+    Available Tools:
+    {% if agent.toolbox %}
+    Tool Names: {{ agent.toolbox | join(", ") }}
+    Tool Descriptions: 
+    {% for tool in agent.toolbox %}
+    - {{ tool }}: {{ agent.tools_description[tool] }}
+    {% endfor %}
+    {% else %}
+    No tools available in toolbox
+    {% endif %}
+  "#
 }
 
 test navigator {
@@ -17,6 +42,7 @@ test navigator {
     args {
         agent {
             agent "basic_sample_info_retriever"
+            role "retrieves basic sample metadata"
             messages {
                 system_message #"You are a helpful assistant that is tasked with answering user questions about a data management platform called NExtSEEK."#
                 user_query #"Can you tell me a little about the sample NHP-220630FLY-15?"#

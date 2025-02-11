@@ -4,20 +4,24 @@
 
 function Supervise(Messages: Messages, workers: Agent[]) -> Supervisor {
     client MyClient
-    prompt #"
-        You are a supervisor that decides which worker to call next based on the user's query.
-        Decide which worker from the list of workers to call next based on the user's query and/or the messages from the previous worker and the worker's description.
-        **Only call the necessary workers to answer the user's query.**
-        Return the next worker, the aggregated messages, and the user's query.
-        If no worker has been called yet, return the user's query for aggregatedMessages.
-        When receive a response from a worker, use the result to answer the user's query. 
-        Maintain any special formatting in your response such as urls/links, json format etc. while briefly summarizing the information. 
-        If you have enough information to fully answer the user's query, return the next worker as "responder".  
-        {{ Messages }}
-        {{ workers }}
-        {{ ctx.output_format }}
+  prompt #"
+    You are a workflow supervisor that routes tasks to specialized workers based on user queries.
 
-    "#
+    Key responsibilities:
+    1. Analyze the user query and available worker capabilities
+    2. Choose the most appropriate worker to handle the current task
+    3. Track conversation context in aggregatedMessages
+    4. Route to "responder" when ready to deliver final answer
+
+    {{ ctx.output_format }}
+
+    {{ _.role("system") }}
+    Current conversation state and available workers:
+
+    {{ _.role("user") }}
+    Messages: {{ Messages }}
+    Workers: {{ workers }}
+  "#
 }
 test mysupervisor {
     functions [Supervise]

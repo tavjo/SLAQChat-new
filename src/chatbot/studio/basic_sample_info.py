@@ -11,10 +11,11 @@ from backend.Tools.services.sample_service import get_sample_name, fetch_protoco
 
 from src.chatbot.studio.helpers import async_navigator_handler
 import asyncio
-
+from studio.models import MessageState
+from studio.prompts import SYSTEM_MESSAGE
 TOOLSET1 = [get_sample_name, retrieve_sample_info, fetch_protocol, fetchChildren, fetch_all_descendants, add_links]
 
-async def basic_sample_info(user_query: str|None=None, summedMessages: list[str]|None=None)->dict|None:
+async def basic_sample_info(messages: MessageState)->dict|None:
     """
     Main function to handle the asynchronous navigation and tool execution.
 
@@ -37,15 +38,16 @@ async def basic_sample_info(user_query: str|None=None, summedMessages: list[str]
                 "add_links": "Add links to the sample information.",
             }
 
+    AGENT = {
+        "agent": agent,
+        "role": "retrieves sample information from the database",
+        "messages": messages,
+        "toolbox": toolbox,
+        "tools_description": tools_description,
+    }
     try:
         # Call the async navigator handler
-        next_tool, tool_args = await async_navigator_handler(
-            agent=agent,
-            toolbox=toolbox,
-            tools_description=tools_description,
-            user_query=user_query,
-            summedMessages=summedMessages
-        )
+        next_tool, tool_args = await async_navigator_handler(agent = AGENT)
 
         print(f"Next tool: {next_tool}")
         print(f"Tool args: {tool_args[0]}")
@@ -61,9 +63,23 @@ async def basic_sample_info(user_query: str|None=None, summedMessages: list[str]
 
         uid = tool_args[0] if isinstance(tool_args, list) else tool_args
 
+        if next_tool == "retrieve_sample_info":
+            resource_type = "sample_metadata"
+        elif next_tool == "fetch_protocol":
+            resource_type = "protocolURL"
+        elif next_tool == "fetchChildren":
+            resource_type = "UIDs"
+        elif next_tool == "fetch_all_descendants":
+            resource_type = "UIDs"
+        elif next_tool == "add_links":
+            resource_type = "sampleURL"
+
         result = await tool_dispatch[next_tool](uid)
         response = {
-            "result": result,
+            "result": f"The {next_tool} tool has been executed successfully. The result is: {result}",
+            "resource": {
+                resource_type: result,
+            },
             "agent": agent,
             "tool": next_tool,
         }
@@ -76,5 +92,9 @@ async def basic_sample_info(user_query: str|None=None, summedMessages: list[str]
 
 if __name__ == "__main__":
     # asyncio.run(basic_sample_info())
-    results = asyncio.run(basic_sample_info(user_query="What is the protocol for the sample NHP-220630FLY-15?"))
+    results = asyncio.run(basic_sample_info(messages = {
+        "system_message": SYSTEM_MESSAGE,
+        "user_query": "What is the protocol for the sample NHP-220630FLY-15?",
+        "aggregatedMessages": ["What is the protocol for the sample NHP-220630FLY-15?"]
+    }))
     print(results)

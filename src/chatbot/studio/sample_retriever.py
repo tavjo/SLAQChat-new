@@ -12,7 +12,8 @@ from langgraph.types import Command
 import sys
 import os
 from baml_client import b as baml
-
+from studio.models import AgentState, ConversationState
+from studio.helpers import get_resource, update_resource, default_resource_box, get_available_workers, update_available_workers
 
 from studio.prompts import (
     SYSTEM_MESSAGE,
@@ -34,27 +35,7 @@ load_dotenv()
 os.environ["OPENAI_API_KEY"] = os.getenv("OPENAI_API_KEY")
 
 
-class ResourceBox(TypedDict):
-    """The resources available to the agent."""
-    sample_metadata: list[dict]
-    protocol: str
-    link: Optional[str] = None
-
-class WorkerState(TypedDict):
-    agent: str
-    role: str
-    messages: MessagesState
-    toolbox: list[str]
-    tools_description: dict[str, str]
-
-class MessageState(TypedDict):
-    system_message: str
-    user_query: str
-    aggregatedMessages: list[str]
-    available_workers: list[WorkerState]
-    resource: ResourceBox
-
-def supervisor_node(state: MessagesState) -> Command[Literal["basic_sample_info_retriever","responder"]]:
+def supervisor_node(state: ConversationState) -> Command[Literal["basic_sample_info_retriever","responder"]]:
     work_groupA = [
         {"agent": "basic_sample_info_retriever",
         "role": "Retrieve basic metadata for the sample",
@@ -110,32 +91,24 @@ def supervisor_node(state: MessagesState) -> Command[Literal["basic_sample_info_
     messages = {
         "system_message": SYSTEM_MESSAGE,
         "user_query": state["messages"][0].content,
-        "aggregatedMessages": state["messages"] + [aggregated_agent_responses],
+        "aggregatedMessages": [aggregated_agent_responses],
         "available_workers": available_workers,
-        "resource": state["resource"]
+        "resource": state["messages"][-1].resource
     }
     response = baml.Supervise(messages, available_workers)
     goto = response.Next_worker.agent
     print(f"Next Worker: {goto}\nJustification: {response.justification}")
     if goto in available_workers_list:
         available_workers_list.remove(goto)
+        available_workers = [worker for worker in available_workers if worker["agent"] != goto]
     print(f"Available Workers: {available_workers_list}")
-    available_workers = [i for i in available_workers_list]
-    # Save the updated available_workers back to state
-    # state["available_workers"] = available_workers
-    return Command(update={
-        "available_workers": available_workers
-        },goto=goto)
+    print(f"Available Workers: {available_workers}")
+    return Command(update={"messages": [HumanMessage(content=response.justification, resource=state["resource"], name="supervisor")]},goto=goto)
 
 
 ########################################################
 # Create agents
 ########################################################
-
-class AgentState(TypedDict):
-    """The state of the agent."""
-    messages: Annotated[Sequence[BaseMessage], add_messages]
-    resource: ResourceBox
 
 def create_agent(llm, tools, msg):
     llm_with_tools = llm.bind_tools(tools)
@@ -157,11 +130,18 @@ def create_agent(llm, tools, msg):
     return graph_builder.compile()
 
 async def create_worker(tools, func):
-    # llm_with_tools = llm.bind_tools(tools)
     async def chatbot(state: AgentState):
         summedMessages = [msg.content for msg in state["messages"]]
-        result = await func(user_query = state["messages"][-1].user_query, summedMessages = summedMessages)
-        return {"messages": [result] + state["messages"], "resource": result["result"]}
+        user_query = state["messages"][0].content
+        system_message = SYSTEM_MESSAGE
+        messages = {
+            "system_message": system_message,
+            "user_query": user_query,
+            "aggregatedMessages": summedMessages,
+            "resource": state["messages"][-1].resource
+        }
+        result = await func(messages = messages)
+        return {"messages": [result["result"]], "resource": result["resource"]}
 
     graph_builder = StateGraph(AgentState)
     graph_builder.add_node("agent", chatbot)
@@ -193,37 +173,32 @@ toolset3 = [summarize_sample_info]
 
 llm = ChatOpenAI(model="gpt-4o-mini", temperature=0)
 
-
-# Toolset 1: Retrieve sample name and information
-# sys_msg for toolset 1
-
-
 ## build agents
 data_summarizer = create_agent(llm, toolset3, SYS_MSG_TOOLSET_3)
 
-async def basic_sample_info_retriever_node(state: MessagesState, tools = TOOLSET1, func = basic_sample_info) -> Command[Literal["supervisor"]]:
+async def basic_sample_info_retriever_node(state: AgentState, tools = TOOLSET1, func = basic_sample_info) -> Command[Literal["supervisor"]]:
     basic_sample_info_retriever = await create_worker(tools, func)
 
-    # result = basic_sample_info_retriever.invoke(state)
     result = await basic_sample_info_retriever.ainvoke(state)
     print(result)
     response = result["messages"][-1].content
+    print(result["resource"])
     return Command(
         update={
             "messages":[
-                HumanMessage(content=f"The results are: {response}", name="basic_sample_info_retriever")
-            ],
-            "resource":result["result"]
+                HumanMessage(content=response, resource=result["resource"], name="basic_sample_info_retriever")
+            ]
         },
         goto="supervisor",
     )
 
-def data_summarizer_node(state: MessagesState) -> Command[Literal["responder"]]:
+def data_summarizer_node(state: AgentState) -> Command[Literal["responder"]]:
     # user_query = state["messages"][-1].user_query
     messages = {
         "system_message": SYSTEM_MESSAGE,
         "user_query": state["messages"][0].content,
-        "aggregatedMessages": [msg.content for msg in state["messages"]]
+        "aggregatedMessages": [msg.content for msg in state["messages"]],
+        "resource": state["resource"]
         }
     result = baml.SummarizeData(messages)
     reource = result.messages.resource
@@ -231,13 +206,12 @@ def data_summarizer_node(state: MessagesState) -> Command[Literal["responder"]]:
         update={
             "messages":[
                 HumanMessage(content=result.summary, name="data_summarizer")
-                ],
-            "resource":reource
+                ]
             },
         goto="responder",
     )
 
-def responder_node(state: MessagesState) -> Command[Literal["data_summarizer","response_formatter","validator","FINISH"]]:
+def responder_node(state: AgentState) -> Command[Literal["data_summarizer","response_formatter","validator","FINISH"]]:
     work_groupB = [
         {
             "agent": "data_summarizer",
@@ -245,29 +219,32 @@ def responder_node(state: MessagesState) -> Command[Literal["data_summarizer","r
             "messages": {
                 "system_message": SYSTEM_MESSAGE,
                 "user_query": state["messages"][0].content,
-                "aggregatedMessages": [msg.content for msg in state["messages"]]
+                "aggregatedMessages": [msg.content for msg in state["messages"]],
+                "resource": state["resource"]
             },
             "toolbox": None,
             "tools_description": None
         },
         {
             "agent": "response_formatter",
-            "role": "2.(optional) Format the response if data_summarizer is used",
+            "role": "2. Format the response for the user",
             "messages": {
                 "system_message": SYSTEM_MESSAGE,
                 "user_query": state["messages"][0].content,
-                "aggregatedMessages": [msg.content for msg in state["messages"]]
+                "aggregatedMessages": [msg.content for msg in state["messages"]],
+                "resource": state["resource"]
             },
             "toolbox": None,
             "tools_description": None
         },
         {
             "agent": "validator",
-            "role": "3.Validate the response",
+            "role": "3. Validate the response",
             "messages": {
                 "system_message": SYSTEM_MESSAGE,
                 "user_query": state["messages"][0].content,
-                "aggregatedMessages": [msg.content for msg in state["messages"]]
+                "aggregatedMessages": [msg.content for msg in state["messages"]],
+                "resource": state["resource"]
             },
             "toolbox": None,
             "tools_description": None
@@ -278,76 +255,67 @@ def responder_node(state: MessagesState) -> Command[Literal["data_summarizer","r
             "messages": {
                 "system_message": SYSTEM_MESSAGE,
                 "user_query": state["messages"][0].content,
-                "aggregatedMessages": [msg.content for msg in state["messages"]]
+                "aggregatedMessages": [msg.content for msg in state["messages"]],
+                "resource": state["resource"]
             },
             "toolbox": None,
             "tools_description": None
         }
     ]
         # Initialize the available workers map if not already in state
-    if "available_workers" not in state or not state["available_workers"]:
+    if "available_workers" not in state:
         state["available_workers"] = work_groupB  # make a copy to update dynamically
 
     available_workers = state["available_workers"]
     available_workers_list = [i["agent"] for i in available_workers]
-    # Aggregate the content of each HumanMessage into a single string
-    # inputMessage = state["messages"][-1].content
-    # user_query = state["messages"][-1].user_query
-    # inputMessage = "\n".join([msg.content for msg in state["messages"]])
-    # print(inputMessage)
     messages = {
         "system_message": SYSTEM_MESSAGE,
         "user_query": state["messages"][0].content,
-        "aggregatedMessages": [msg.content for msg in state["messages"]]
+        "aggregatedMessages": [msg.content for msg in state["messages"]],
+        "resource": state["resource"]
     }
     response = baml.Respond(messages, workers=available_workers)
     goto = response.Next_worker.agent
     print(f"Next Worker: {goto}\nJustification: {response.justification}")
     if goto in available_workers_list:
         available_workers_list.remove(goto)
+        available_workers = [worker for worker in available_workers if worker["agent"] != goto]
     print(f"Available Workers: {available_workers_list}")
     available_workers = [i for i in available_workers_list]
-    # Save the updated available_workers back to state
-    # state["available_workers"] = available_workers
     return Command(update={
             "messages":[
-                HumanMessage(content=messages.aggregatedMessages, name="responder", user_query = messages.user_query)
-            ],
-            "available_workers": available_workers
-        },goto=goto)
+                HumanMessage(content=response.justification, name="responder")]},
+                goto=goto)
 
 def validator_node(state: AgentState) -> Command[Literal["responder"]]:
-    # # Aggregate the content of each HumanMessage into a single string
-    # aggregated_messages = "\n".join([msg.content for msg in state["messages"]])
-    # aggregated_messages = state["messages"][-1].content
     messages = {
         "system_message": SYSTEM_MESSAGE,
         "user_query": state["messages"][0].content,
-        "aggregatedMessages": [msg.content for msg in state["messages"]]
+        "aggregatedMessages": [msg.content for msg in state["messages"]],
+        "resource": state["resource"]
     }
-    response = baml.ValidateResponse(response=messages)
+    response = baml.ValidateResponse(inputMessage=messages)
     goto = "responder"
     print(f"Agent: {response.name}\nJustification: {response.justification}")
     if response.Valid:
-        new_aggregate = response.originalMessage
+        new_aggregate = str(response.Valid) + "\n" + response.justification
     else:
         new_aggregate = response.Clarifying_Question
     return Command(
         update={
             "messages":[
                 HumanMessage(content=new_aggregate, name="validator")
-            ],
-            "resource":response.originalMessage.resource
+            ]
         },
         goto=goto,
     )
 
-def response_formatter_node(state: MessagesState) -> Command[Literal["responder"]]:
-    # user_query = state["messages"][-1].user_query]
+def response_formatter_node(state: AgentState) -> Command[Literal["responder"]]:
     messages = {
     "system_message": SYSTEM_MESSAGE,
     "user_query": state["messages"][0].content,
-    "aggregatedMessages": [msg.content for msg in state["messages"]]
+    "aggregatedMessages": [msg.content for msg in state["messages"]],
+    "resource": state["resource"]
 }
     result = baml.FormatResponse(messages)
     print(result)
@@ -358,13 +326,12 @@ def response_formatter_node(state: MessagesState) -> Command[Literal["responder"
         update={
             "messages":[
                 HumanMessage(content=result.formattedResponse, name=name)
-            ],
-            "resource":result.messages.resource
+            ]
         },
         goto=goto,
     )
 
-def finish_node(state: MessagesState) -> Command[Literal["__end__"]]:
+def finish_node(state: AgentState) -> Command[Literal["__end__"]]:
     reply = state["messages"][-1].content
     print(reply)
     goto = END

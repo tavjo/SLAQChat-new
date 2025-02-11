@@ -50,7 +50,7 @@ class DataSummarizer(BaseModel):
 class Messages(BaseModel):
     system_message: Optional[str] = None
     user_query: Optional[str] = None
-    aggredatedMessages: List[Optional[str]]
+    aggregatedMessages: List[Optional[str]]
     resource: Optional["ResourceBox"] = None
 
 class Metadata(BaseModel):
@@ -130,8 +130,9 @@ class Navigator(BaseModel):
 
 class ResourceBox(BaseModel):
     sample_metadata: List["Metadata"]
-    protocol_link: Optional[str] = None
-    link: Optional[str] = None
+    protocolUrl: Optional[str] = None
+    sampleUrl: Optional[str] = None
+    UIDs: List[Optional[str]]
 
 class Responder(BaseModel):
     Next_worker: Optional["Agent"] = None
@@ -143,12 +144,6 @@ class ResponseFormatter(BaseModel):
     name: Optional[str] = None
     messages: Optional["Messages"] = None
     justification: Optional[str] = None
-
-class Resume(BaseModel):
-    name: Optional[str] = None
-    email: Optional[str] = None
-    experience: List[Optional[str]]
-    skills: List[Optional[str]]
 
 class Supervisor(BaseModel):
     Next_worker: Optional["Agent"] = None
