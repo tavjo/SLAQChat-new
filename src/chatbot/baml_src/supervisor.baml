@@ -2,7 +2,7 @@
 // Define Supervisor class
 
 
-function Supervise(Messages: Messages, workers: Agent[]) -> Supervisor {
+function Supervise(Messages: Payload, workers: Agent[]) -> Supervisor {
     client MyClient
   prompt #"
     You are a workflow supervisor that routes tasks to specialized workers based on user queries.

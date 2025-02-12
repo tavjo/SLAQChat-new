@@ -1,4 +1,4 @@
-function FormatResponse(messages: Messages) -> ResponseFormatter {
+function FormatResponse(messages: Payload) -> ResponseFormatter {
 
     client MyClient
         prompt #"

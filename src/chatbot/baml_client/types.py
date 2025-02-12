@@ -42,21 +42,13 @@ def all_succeeded(checks: Dict[CheckName, Check]) -> bool:
 class Agent(BaseModel):
     agent: str
     role: str
-    messages: "Messages"
     toolbox: Optional[List[str]] = None
     tools_description: Optional[Dict[str, str]] = None
 
 class DataSummarizer(BaseModel):
-    Next_worker: str
     summary: str
-    messages: "Messages"
+    messages: "Payload"
     justification: str
-
-class Messages(BaseModel):
-    system_message: str
-    user_query: str
-    aggregatedMessages: Optional[List[str]] = None
-    resource: Optional["ResourceBox"] = None
 
 class Metadata(BaseModel):
     UID: Optional[str] = None
@@ -133,6 +125,12 @@ class Navigator(BaseModel):
     tool_args: List[str]
     justification: str
 
+class Payload(BaseModel):
+    system_message: str
+    user_query: str
+    aggregatedMessages: Optional[List[str]] = None
+    resource: Optional["ResourceBox"] = None
+
 class ResourceBox(BaseModel):
     sample_metadata: Optional[List["Metadata"]] = None
     protocolUrl: Optional[str] = None
@@ -144,10 +142,9 @@ class Responder(BaseModel):
     justification: str
 
 class ResponseFormatter(BaseModel):
-    Next_worker: str
     formattedResponse: str
     name: str
-    messages: "Messages"
+    messages: "Payload"
     justification: str
 
 class Supervisor(BaseModel):
@@ -159,5 +156,4 @@ class Validator(BaseModel):
     Valid: bool
     Clarifying_Question: Optional[str] = None
     justification: str
-    Next_worker: str
-    response: "Messages"
+    response: "Payload"

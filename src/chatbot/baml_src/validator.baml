@@ -1,6 +1,15 @@
 // Create a function to validate the response from the responder.
-function ValidateResponse(inputMessage: Messages) -> Validator {
-  client MyClient
+client<llm> ValidatorClient {
+  provider "openai"
+  options {
+    api_key env.OPENAI_API_KEY
+    model "gpt-4o"
+    temperature 0
+  }
+}
+
+function ValidateResponse(inputMessage: Payload) -> Validator {
+  client ValidatorClient
   prompt #"
     You are a validation expert. Analyze the conversation and validate if the response adequately addresses the user's query.
 
@@ -9,7 +18,8 @@ function ValidateResponse(inputMessage: Messages) -> Validator {
     2. Verify any resources or links mentioned are present in the ResourceBox
     3. Ensure no information is fabricated
     4. Confirm technical accuracy and format consistency
-    5. Validate URLs match the expected pattern
+    5. Address your clarifying questions to the user if needed
+    6. Don't assume an information is wrong, only address gaps in the information provided based on the user's query
 
     If invalid, provide a specific clarifying question addressing the gap.
     {{ inputMessage }}

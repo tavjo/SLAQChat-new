@@ -103,5 +103,5 @@ class WorkerState(TypedDict):
 
 class ConversationState(TypedDict):
     messages: List[BaseMessage]
-    resources: ResourceBox
-    available_workers: list[WorkerState]
+    resources: Optional[ResourceBox]
+    available_workers: Optional[list[WorkerState]]

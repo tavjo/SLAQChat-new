@@ -1,7 +1,6 @@
 class DataSummarizer {
-    Next_worker string @description("The next worker to call : 'responder'")
     summary string @description("The summary of the input message")
-    messages Messages @description("The messages in the conversation")
+    messages Payload @description("The messages in the conversation")
     justification string @description("The justification for your response")
 }
 
@@ -18,10 +17,9 @@ class Responder {
 }
 
 class ResponseFormatter {
-    Next_worker string @description("The next worker to call : responder")
     formattedResponse string @description("Formatted response for the user")
     name string @description("The name of the current worker : response_formatter")
-    messages Messages @description("Conversation history and context")
+    messages Payload @description("Conversation history and context")
     justification string @description("The justification for your response")
 }
 
@@ -107,7 +105,7 @@ class Metadata {
     Treatment3DoseUnits string?
 }
 
-class Messages {
+class Payload {
     system_message string @description("The system message")
     user_query string @description("The user message")
     aggregatedMessages string[]? @description("The aggregated messages in the conversation")
@@ -117,7 +115,7 @@ class Messages {
 class Agent {
     agent string @description("The name of the agent")
     role string @description("The role of the agent")
-    messages Messages @description("The messages in the conversation")
+    // messages Messages @description("The messages in the conversation")
     toolbox string[]? @description("The toolbox of the agent")
     tools_description map<string, string>? @description("The description of the tools in the toolbox")
 }
@@ -127,6 +125,5 @@ class Validator {
     Valid bool @description("Whether the response is valid")
     Clarifying_Question string? @description("A clarifying question to the user if Valid is false")
     justification string @description("The justification for your response")
-    Next_worker string @description("The next worker to call : responder")
-    response Messages @description("same as inputMessage")
+    response Payload @description("same as inputMessage")
 }

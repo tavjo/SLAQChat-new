@@ -37,21 +37,13 @@ class StreamState(BaseModel, Generic[T]):
 class Agent(BaseModel):
     agent: Optional[str] = None
     role: Optional[str] = None
-    messages: Optional["Messages"] = None
     toolbox: List[Optional[str]]
     tools_description: Dict[str, Optional[str]]
 
 class DataSummarizer(BaseModel):
-    Next_worker: Optional[str] = None
     summary: Optional[str] = None
-    messages: Optional["Messages"] = None
+    messages: Optional["Payload"] = None
     justification: Optional[str] = None
-
-class Messages(BaseModel):
-    system_message: Optional[str] = None
-    user_query: Optional[str] = None
-    aggregatedMessages: List[Optional[str]]
-    resource: Optional["ResourceBox"] = None
 
 class Metadata(BaseModel):
     UID: Optional[str] = None
@@ -128,6 +120,12 @@ class Navigator(BaseModel):
     tool_args: List[Optional[str]]
     justification: Optional[str] = None
 
+class Payload(BaseModel):
+    system_message: Optional[str] = None
+    user_query: Optional[str] = None
+    aggregatedMessages: List[Optional[str]]
+    resource: Optional["ResourceBox"] = None
+
 class ResourceBox(BaseModel):
     sample_metadata: List["Metadata"]
     protocolUrl: Optional[str] = None
@@ -139,10 +137,9 @@ class Responder(BaseModel):
     justification: Optional[str] = None
 
 class ResponseFormatter(BaseModel):
-    Next_worker: Optional[str] = None
     formattedResponse: Optional[str] = None
     name: Optional[str] = None
-    messages: Optional["Messages"] = None
+    messages: Optional["Payload"] = None
     justification: Optional[str] = None
 
 class Supervisor(BaseModel):
@@ -154,5 +151,4 @@ class Validator(BaseModel):
     Valid: Optional[bool] = None
     Clarifying_Question: Optional[str] = None
     justification: Optional[str] = None
-    Next_worker: Optional[str] = None
-    response: Optional["Messages"] = None
+    response: Optional["Payload"] = None

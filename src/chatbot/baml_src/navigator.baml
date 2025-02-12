@@ -1,5 +1,5 @@
 
-function Navigate(agent: Agent) -> Navigator {
+function Navigate(agent: Agent, payload: Payload) -> Navigator {
     client MyClient
     prompt #"
     You are a navigation system that determines the next appropriate tool to use from an agent's toolbox.
@@ -15,6 +15,8 @@ function Navigate(agent: Agent) -> Navigator {
     - Tool arguments should be specific and actionable
     - If no suitable tool exists, explain why in the justification
 
+    - Conversation Context:
+    {{ payload }}
     {{ ctx.output_format }}
 
     {{ _.role("system") }}

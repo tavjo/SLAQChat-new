@@ -49,7 +49,7 @@ class BamlSyncClient:
     
     def FormatResponse(
         self,
-        messages: types.Messages,
+        messages: types.Payload,
         baml_options: BamlCallOptions = {},
     ) -> types.ResponseFormatter:
       __tb__ = baml_options.get("tb", None)
@@ -72,7 +72,7 @@ class BamlSyncClient:
     
     def Navigate(
         self,
-        agent: types.Agent,
+        agent: types.Agent,payload: types.Payload,
         baml_options: BamlCallOptions = {},
     ) -> types.Navigator:
       __tb__ = baml_options.get("tb", None)
@@ -85,7 +85,7 @@ class BamlSyncClient:
       raw = self.__runtime.call_function_sync(
         "Navigate",
         {
-          "agent": agent,
+          "agent": agent,"payload": payload,
         },
         self.__ctx_manager.get(),
         tb,
@@ -95,7 +95,7 @@ class BamlSyncClient:
     
     def Respond(
         self,
-        inputMessage: types.Messages,workers: List[types.Agent],
+        inputMessage: types.Payload,workers: List[types.Agent],
         baml_options: BamlCallOptions = {},
     ) -> types.Responder:
       __tb__ = baml_options.get("tb", None)
@@ -118,7 +118,7 @@ class BamlSyncClient:
     
     def SummarizeData(
         self,
-        inputMessage: types.Messages,
+        inputMessage: types.Payload,
         baml_options: BamlCallOptions = {},
     ) -> types.DataSummarizer:
       __tb__ = baml_options.get("tb", None)
@@ -141,7 +141,7 @@ class BamlSyncClient:
     
     def Supervise(
         self,
-        Messages: types.Messages,workers: List[types.Agent],
+        Messages: types.Payload,workers: List[types.Agent],
         baml_options: BamlCallOptions = {},
     ) -> types.Supervisor:
       __tb__ = baml_options.get("tb", None)
@@ -164,7 +164,7 @@ class BamlSyncClient:
     
     def ValidateResponse(
         self,
-        inputMessage: types.Messages,
+        inputMessage: types.Payload,
         baml_options: BamlCallOptions = {},
     ) -> types.Validator:
       __tb__ = baml_options.get("tb", None)
@@ -199,7 +199,7 @@ class BamlStreamClient:
     
     def FormatResponse(
         self,
-        messages: types.Messages,
+        messages: types.Payload,
         baml_options: BamlCallOptions = {},
     ) -> baml_py.BamlSyncStream[partial_types.ResponseFormatter, types.ResponseFormatter]:
       __tb__ = baml_options.get("tb", None)
@@ -229,7 +229,7 @@ class BamlStreamClient:
     
     def Navigate(
         self,
-        agent: types.Agent,
+        agent: types.Agent,payload: types.Payload,
         baml_options: BamlCallOptions = {},
     ) -> baml_py.BamlSyncStream[partial_types.Navigator, types.Navigator]:
       __tb__ = baml_options.get("tb", None)
@@ -243,6 +243,7 @@ class BamlStreamClient:
         "Navigate",
         {
           "agent": agent,
+          "payload": payload,
         },
         None,
         self.__ctx_manager.get(),
@@ -259,7 +260,7 @@ class BamlStreamClient:
     
     def Respond(
         self,
-        inputMessage: types.Messages,workers: List[types.Agent],
+        inputMessage: types.Payload,workers: List[types.Agent],
         baml_options: BamlCallOptions = {},
     ) -> baml_py.BamlSyncStream[partial_types.Responder, types.Responder]:
       __tb__ = baml_options.get("tb", None)
@@ -290,7 +291,7 @@ class BamlStreamClient:
     
     def SummarizeData(
         self,
-        inputMessage: types.Messages,
+        inputMessage: types.Payload,
         baml_options: BamlCallOptions = {},
     ) -> baml_py.BamlSyncStream[partial_types.DataSummarizer, types.DataSummarizer]:
       __tb__ = baml_options.get("tb", None)
@@ -320,7 +321,7 @@ class BamlStreamClient:
     
     def Supervise(
         self,
-        Messages: types.Messages,workers: List[types.Agent],
+        Messages: types.Payload,workers: List[types.Agent],
         baml_options: BamlCallOptions = {},
     ) -> baml_py.BamlSyncStream[partial_types.Supervisor, types.Supervisor]:
       __tb__ = baml_options.get("tb", None)
@@ -351,7 +352,7 @@ class BamlStreamClient:
     
     def ValidateResponse(
         self,
-        inputMessage: types.Messages,
+        inputMessage: types.Payload,
         baml_options: BamlCallOptions = {},
     ) -> baml_py.BamlSyncStream[partial_types.Validator, types.Validator]:
       __tb__ = baml_options.get("tb", None)

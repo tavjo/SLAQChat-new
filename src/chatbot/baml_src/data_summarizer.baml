@@ -1,21 +1,16 @@
 
-function SummarizeData(inputMessage: Messages) -> DataSummarizer {
+function SummarizeData(inputMessage: Payload) -> DataSummarizer {
     client MyClient
     prompt #"
-    Analyze the conversation and create a concise summary. Focus on:
+    Analyze the conversation and create a concise but informative summary. Focus on:
     1. Key points relevant to the user's query
     2. Important details from available resources
+    3. Your summary should attempt to answer the user's query based on the information available
+    4. Never make up information, only use the information provided
+    5. Format your response as if addressing the user directly
+
+    {{ inputMessage }}
     {{ ctx.output_format }}
-    {{ _.role("system") }}
-    Messages:
-    {% for msg in inputMessage.aggregatedMessages %}
-    {{ _.role(inputMessage.system_message) }} {{ msg }} 
-    {% endfor %}
-    {{ _.role("user") }} {{ inputMessage.user_query }}
-    {% if inputMessage.resource %}
-    Available Resources:
-    {{ inputMessage.resource }}
-    {% endif %}
     "#
 }
 

@@ -6,8 +6,17 @@ from langgraph.checkpoint.sqlite import SqliteSaver
 # checkpoint
 import sqlite3
 from dotenv import load_dotenv
+# from langgraph.graph import MessagesState
+import asyncio
+import sys
 import os
-from langgraph.graph import MessagesState
+
+# Add the project root directory to the Python path
+project_root = os.path.abspath(os.path.join(os.path.dirname(__file__), '../../..'))
+sys.path.append(project_root)
+
+from src.chatbot.studio.models import ConversationState
+
 load_dotenv()
 os.environ["OPENAI_API_KEY"] = os.getenv("OPENAI_API_KEY")
 
@@ -16,9 +25,8 @@ os.environ["OPENAI_API_KEY"] = os.getenv("OPENAI_API_KEY")
 conn = sqlite3.connect(":memory:", check_same_thread = False)
 memory = SqliteSaver(conn)
 
-graph = sampleRetrieverGraph(state = MessagesState, memory = memory)
 
-def run_agent_chatbot():
+async def run_agent_chatbot():
     st.title("💬 NExtSEEK Chatbot")
     st.caption("🚀 Interact with the NExtSEEK AI assistant powered by LangGraph and OpenAI.")
     
@@ -44,8 +52,11 @@ def run_agent_chatbot():
 
         # Create a HumanMessage and invoke the graph
         messages = [HumanMessage(content=user_input)]
-        config={"configurable":  {"thread_id": "1"}}
-        result = graph.invoke({"messages": messages}, config)
+        initial_state: ConversationState = {"messages": messages}
+        # config={"configurable":  {"thread_id": "1"}}
+        # result = graph.invoke({"messages": messages}, config)
+        graph = sampleRetrieverGraph(state = initial_state)
+        result = await graph.ainvoke({"messages": messages})
 
         # Extract and display AI response
         if "messages" in result and len(result["messages"]) > 1:
@@ -58,4 +69,4 @@ def run_agent_chatbot():
             st.chat_message("assistant").write(error_message)
 
 if __name__ == "__main__":
-    run_agent_chatbot()
+    asyncio.run(run_agent_chatbot())

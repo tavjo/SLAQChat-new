@@ -1,15 +1,16 @@
 // Create a function to respond to the user's query.
-function Respond(inputMessage: Messages, workers: Agent[]) -> Responder {
+function Respond(inputMessage: Payload, workers: Agent[]) -> Responder {
     client MyClient
       prompt  #"
     You are a workflow coordinator selecting the next appropriate worker to handle this conversation.
 
     Worker Selection Rules:
     1. Workers must be used in this sequence: {{ workers }}
-    2. Workers with 'optional' in name should only be used when necessary
-    3. Never repeat a worker
-    4. After 'validator' worker, always transition to 'FINISH'
-    5. Choose based on the current conversation state and needs
+    2. Workers must be used in the order of the list 
+    3. Workers with 'optional' in name should only be used when necessary
+    4. Never repeat a worker
+    5. After 'validator' worker, always transition to 'FINISH'
+    6. Choose based on the current conversation state and needs
 
     Selection Process:
     - Analyze the current conversation stage
