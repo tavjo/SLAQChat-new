@@ -46,13 +46,13 @@ async def run_agent_chatbot():
     user_input = st.chat_input(placeholder="e.g., Which NHP has this UID: NHP-220630FLY-15?")
 
     if user_input:
+        messages = [HumanMessage(content=user_input)]
+        initial_state: ConversationState = {"messages": messages}
         # Add user input to the conversation state
         st.session_state.conversation.append(("User", user_input))
         st.chat_message("user").write(user_input)
 
         # Create a HumanMessage and invoke the graph
-        messages = [HumanMessage(content=user_input)]
-        initial_state: ConversationState = {"messages": messages}
         # config={"configurable":  {"thread_id": "1"}}
         # result = graph.invoke({"messages": messages}, config)
         graph = sampleRetrieverGraph(state = initial_state)

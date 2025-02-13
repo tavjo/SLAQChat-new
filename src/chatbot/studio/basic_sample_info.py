@@ -121,7 +121,8 @@ async def basic_sample_info_retriever_node(state: ConversationState, tools = TOO
 if __name__ == "__main__":
     # asyncio.run(basic_sample_info())
     initial_state: ConversationState = {
-        "messages": [HumanMessage(content="Can you tell me more about the sample with UID PAV-220630FLY-1031?")],
+        # "messages": [HumanMessage(content="Can you tell me more about the sample with UID PAV-220630FLY-1031?")],
+        "messages": [HumanMessage(content="What are the children of sample PAV-220630FLY-1031?")],
         "resources": default_resource_box(),
     }
     # results = asyncio.run(basic_sample_info(initial_state))

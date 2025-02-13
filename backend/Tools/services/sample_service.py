@@ -108,7 +108,7 @@ async def retrieve_sample_info(uid: str) -> List[dict] | None:
         return None
 
 @async_wrap
-def fetchChildren(term: str) -> List[dict]:
+def fetchChildrenMetadata(term: str) -> List[dict]:
     """
     Fetch the children metadata for a given term from the database.
 
@@ -130,8 +130,24 @@ def fetchChildren(term: str) -> List[dict]:
     except Exception as e:
         logger.error(f"Error fetching NHP metadata: {e}")
         return []
-    
 
+@async_wrap    
+def fetchChildren(term: str) -> List[str]:
+    """
+    Fetch the children of a given sample.
+    """
+    try:
+        query = text("""
+        SELECT uuid, children 
+        FROM dmac.seek_sample_tree
+        WHERE uuid = :term;
+        """)
+        res = execute_query(query.bindparams(term=term), 'DB_NAME1')
+        children = json.loads(res[0]['children'])
+        return children
+    except Exception as e:
+        logger.error(f"Error fetching NHP metadata: {e}")
+        return []
 
 async def fetch_all_descendants(term: str) -> List[str]:
     """
@@ -145,7 +161,7 @@ async def fetch_all_descendants(term: str) -> List[str]:
     """
     try:
         # Fetch the children metadata
-        children_metadata = await fetchChildren(term)
+        children_metadata = await fetchChildrenMetadata(term)
         if not children_metadata:
             return []
 
