@@ -1,6 +1,15 @@
 
+client<llm> NavClient {
+  provider "openai"
+  options {
+    api_key env.OPENAI_API_KEY
+    model "gpt-4o"
+    temperature 0.7
+  }
+}
+
 function Navigate(agent: Agent, payload: Payload) -> Navigator {
-    client MyClient
+    client NavClient
     prompt #"
     You are a navigation system that determines the next appropriate tool to use from an agent's toolbox.
 
@@ -9,6 +18,7 @@ function Navigate(agent: Agent, payload: Payload) -> Navigator {
     2. Select a tool from the agent's toolbox that best addresses the current need
     3. Format tool arguments precisely based on the tool's requirements
     4. Provide clear justification for your tool selection
+    5. Do not return a tool if none appear suitable to answer the user query. Instead return an empty string for the tool name and an empty list for the tool arguments.
 
     Constraints:
     - The tool name must exactly match one in the agent's toolbox
@@ -25,17 +35,6 @@ function Navigate(agent: Agent, payload: Payload) -> Navigator {
     {{ _.role("user") }}
     Agent Information:
     {{ agent }}
-
-    Available Tools:
-    {% if agent.toolbox %}
-    Tool Names: {{ agent.toolbox | join(", ") }}
-    Tool Descriptions: 
-    {% for tool in agent.toolbox %}
-    - {{ tool }}: {{ agent.tools_description[tool] }}
-    {% endfor %}
-    {% else %}
-    No tools available in toolbox
-    {% endif %}
   "#
 }
 
@@ -47,7 +46,7 @@ test navigator {
             role "retrieves basic sample metadata"
             messages {
                 system_message #"You are a helpful assistant that is tasked with answering user questions about a data management platform called NExtSEEK."#
-                user_query #"Can you tell me a little about the sample NHP-220630FLY-15?"#
+                user_query #"What is the weather today?"#
                 aggredatedMessages [#"Can you tell me a little about the sample NHP-220630FLY-15?"#]
             }
             resource {

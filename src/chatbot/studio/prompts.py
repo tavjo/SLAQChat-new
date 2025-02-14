@@ -1,3 +1,14 @@
+from backend.Tools.services.sample_service import *
+# from src.chatbot.studio.response_formatter import response_formatter_node
+# from src.chatbot.studio.validator import validator_node
+# from src.chatbot.studio.data_summarizer import data_summarizer_node
+from backend.Tools.services.module_to_json import functions_to_json
+
+
+TOOLSET1 = [get_sample_name, retrieve_sample_info, fetch_protocol, fetchChildren, fetch_all_descendants, add_links]
+# TOOLSET2 = [data_summarizer_node, response_formatter_node, validator_node]
+
+
 # Define each prompt as a separate constant
 
 # List of members
@@ -15,52 +26,35 @@ SYSTEM_MESSAGE = (
 WORK_GROUP_A = [
     {"agent": "basic_sample_info_retriever",
     "role": "Retrieve basic metadata for the sample",
-    "toolbox": ["get_sample_name", "retrieve_sample_info", "fetch_protocol", "fetchChildren", "fetch_all_descendants", "add_links"],
-    "tools_description": {
-                "get_sample_name": "Get the name of the sample.",
-                "retrieve_sample_info": "Retrieve the sample information for a given sample UID.",
-                "fetch_protocol": "Fetch the protocol for a given sample UID.",
-                "fetchChildren": "Fetch the children of a given sample UID.",
-                "fetch_all_descendants": "Fetch all descendants of a given sample UID.",
-                "add_links": "Add links to the sample information.",
-            }},
+    "toolbox": functions_to_json(TOOLSET1)
+},
     {
         "agent": "responder",
         "role": "Validate and respond to the user's query",
-        "toolbox": ["data_summarizer", "response_formatter", "validator", "FINISH"],
-        "tools_description": {
-            "data_summarizer": "Summarize the data if response is longer than 100 words",
-            "response_formatter": "Format the response if data_summarizer is used",
-            "validator": "Validate the response",
-            "FINISH": "Finish the conversation"
-        }
+        "toolbox": None#functions_to_json(TOOLSET2)
     }
 ]
 
 WORK_GROUP_B = [
         {
             "agent": "data_summarizer",
-            "role": "1.(optional) Summarize the data if response is longer than 100 words",
-            "toolbox": None,
-            "tools_description": None
+            "role": '1.(optional) Summarize conversation and data if more than 8 elements in aggregatedMessages',
+            "toolbox": None
         },
         {
             "agent": "response_formatter",
             "role": "2. Format the response for the user",
-            "toolbox": None,
-            "tools_description": None
+            "toolbox": None
         },
         {
             "agent": "validator",
             "role": "3. Validate the response",
-            "toolbox": None,
-            "tools_description": None
+            "toolbox": None
         },
         {
             "agent": "FINISH",
             "role": "4.Finish the conversation",
-            "toolbox": None,
-            "tools_description": None
+            "toolbox": None
         }
     ]
 

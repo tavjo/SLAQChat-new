@@ -2,22 +2,28 @@
 
 import sys
 import os
+import time
 
 # Add the project root directory to the Python path
 project_root = os.path.abspath(os.path.join(os.path.dirname(__file__), '../../..'))
 sys.path.append(project_root)
 
-from backend.Tools.services.sample_service import get_sample_name, fetch_protocol, retrieve_sample_info, fetchChildren, fetch_all_descendants, add_links
+from backend.Tools.services.sample_service import *
+from backend.Tools.services.module_to_json import functions_to_json, module_to_json
 
 from src.chatbot.studio.helpers import async_navigator_handler, update_resource, default_resource_box
 import asyncio
 from langchain_core.messages import HumanMessage
 from src.chatbot.studio.models import ConversationState
-from src.chatbot.studio.helpers import create_worker
+from src.chatbot.studio.helpers import create_worker#, create_agent
 from langgraph.types import Command
 from typing_extensions import Literal
+# from langchain_openai import ChatOpenAI
 
-TOOLSET1 = [get_sample_name, retrieve_sample_info, fetch_protocol, fetchChildren, fetch_all_descendants, add_links]
+from src.chatbot.studio.prompts import TOOLSET1
+TOOL_DISPATCH = {
+    attr.__name__: attr for attr in TOOLSET1
+}
 
 async def basic_sample_info(state: ConversationState)->dict|None:
     """
@@ -32,21 +38,11 @@ async def basic_sample_info(state: ConversationState)->dict|None:
     """
 
     agent = "basic_sample_info_retriever"
-    toolbox=["get_sample_name", "retrieve_sample_info", "fetch_protocol", "fetchChildren", "fetch_all_descendants", "add_links"]
-    tools_description={
-                "get_sample_name": "Get the name of the sample.",
-                "retrieve_sample_info": "Retrieve the sample information for a given sample UID.",
-                "fetch_protocol": "Fetch the protocol for a given sample UID.",
-                "fetchChildren": "Fetch the children of a given sample UID.",
-                "fetch_all_descendants": "Fetch all descendants of a given sample UID.",
-                "add_links": "Add links to the sample information."
-            }
 
     AGENT = {
         "agent": agent,
         "role": "retrieves sample information from the database",
-        "toolbox": toolbox,
-        "tools_description": tools_description,
+        "toolbox": functions_to_json(TOOLSET1)
     }
     try:
         # Call the async navigator handler
@@ -54,15 +50,6 @@ async def basic_sample_info(state: ConversationState)->dict|None:
 
         print(f"Next tool: {next_tool}")
         print(f"Tool args: {tool_args[0]}")
-
-        tool_dispatch = {
-            "get_sample_name": get_sample_name,
-            "retrieve_sample_info": retrieve_sample_info,
-            "fetch_protocol": fetch_protocol,
-            "fetchChildren": fetchChildren,
-            "fetch_all_descendants": fetch_all_descendants,
-            "add_links": add_links,
-        }
 
         uid = tool_args[0] if isinstance(tool_args, list) else tool_args
 
@@ -76,8 +63,16 @@ async def basic_sample_info(state: ConversationState)->dict|None:
             resource_type = "UIDs"
         elif next_tool == "add_links":
             resource_type = "sampleURL"
-
-        result = await tool_dispatch[next_tool](uid)
+        
+        if next_tool == "" and len(tool_args) == 0:
+            response = {
+                "result": "No tool was selected. Invalid query.",
+                "agent": agent,
+                "justification": justification
+            }
+            return response
+        else:
+            result = await TOOL_DISPATCH[next_tool](uid)
         
         if result:
             new_resource = {
@@ -103,26 +98,58 @@ async def basic_sample_info(state: ConversationState)->dict|None:
         return None
 
 async def basic_sample_info_retriever_node(state: ConversationState, tools = TOOLSET1, func = basic_sample_info) -> Command[Literal["supervisor"]]:
-    basic_sample_info_retriever = await create_worker(tools, func)
+    """
+    Asynchronously retrieves sample information using a specified function and updates the conversation state.
 
-    result = await basic_sample_info_retriever.ainvoke(state)
-    print(result["messages"][-1].content)
-    update_resource(state, result["resources"])
-    print(state["resources"])
-    updated_messages = state["messages"] + [HumanMessage(content=result["messages"][-1].content, name="basic_sample_info_retriever")]
-    return Command(
-        update={
-            "messages": updated_messages,
-            "resources": result["resources"]
-        },
-        goto="supervisor",
-    )
+    Args:
+        state (ConversationState): The current state of the conversation.
+        tools (list): A list of tools to be used by the worker.
+        func (callable): The function to be executed by the worker.
+
+    Returns:
+        Command[Literal["supervisor"]]: A command object with updated messages and resources, directing the flow to the supervisor.
+
+    Raises:
+        Exception: If any error occurs during the execution of the worker or invocation.
+    """
+    try:
+        start_time = time.time()
+        print("Creating worker...")
+        basic_sample_info_retriever = await create_worker(tools,func)
+        print(f"Worker created in {time.time() - start_time:.2f} seconds.")
+
+        start_time = time.time()
+        print("Invoking basic_sample_info_retriever...")
+        result = await basic_sample_info_retriever.ainvoke(state)
+        print(f"Invocation completed in {time.time() - start_time:.2f} seconds.")
+        print(result["messages"][-1].content)
+        # update_resource(state, result["new_resource"])
+        print(state["resources"])
+
+        updated_messages = state["messages"] + [HumanMessage(content=result["messages"][-1].content, name="basic_sample_info_retriever")]
+        return Command(
+            update={
+                "messages": updated_messages,
+                "resources": state["resources"]
+            },
+            goto="supervisor",
+        )
+    except Exception as e:
+        messages = f"An error occurred while retrieving sample information: {e}"
+        updated_messages = state["messages"] + [HumanMessage(content=messages, name="basic_sample_info_retriever")]
+        print(messages)
+        return Command(
+            update={
+                "messages": updated_messages
+            },
+            goto="supervisor",
+        )
 
 if __name__ == "__main__":
     # asyncio.run(basic_sample_info())
     initial_state: ConversationState = {
-        # "messages": [HumanMessage(content="Can you tell me more about the sample with UID PAV-220630FLY-1031?")],
-        "messages": [HumanMessage(content="What are the children of sample PAV-220630FLY-1031?")],
+        "messages": [HumanMessage(content="Can you tell me more about the sample with UID PAV-220630FLY-1031?")],
+        # "messages": [HumanMessage(content="What is the weather today?")],
         "resources": default_resource_box(),
     }
     # results = asyncio.run(basic_sample_info(initial_state))

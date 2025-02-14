@@ -3,16 +3,18 @@
 import sys
 import os
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..')))
-from src.chatbot.baml_client.async_client import b
-from src.chatbot.studio.models import ResourceBox, WorkerState, ConversationState, AgentState
-from src.chatbot.studio.prompts import SYSTEM_MESSAGE
-from langgraph.graph import StateGraph
-from langgraph.prebuilt import tools_condition, ToolNode
-from langchain_core.messages import HumanMessage
+# from src.chatbot.baml_client.async_client import b
+from src.chatbot.studio.models import ResourceBox, WorkerState, ConversationState
+# from src.chatbot.studio.prompts import SYSTEM_MESSAGE
+# from langgraph.graph import StateGraph
+# from langgraph.prebuilt import tools_condition, ToolNode
+# from langchain_core.messages import HumanMessage
+import time
 
 
 # Example: A default empty resources function if needed.
 def default_resource_box() -> ResourceBox:
+    from src.chatbot.studio.models import ResourceBox
     return {
         "sample_metadata": [],
         "protocolURL": "",
@@ -20,10 +22,12 @@ def default_resource_box() -> ResourceBox:
         "UIDs": []
     }
 def available_workers() -> list[WorkerState]:
+    from src.chatbot.studio.models import WorkerState
     return []
 
 # Helper function to update the resource information.
 def update_resource(state: ConversationState, new_resource: ResourceBox) -> None:
+    from src.chatbot.studio.models import ResourceBox, ConversationState
     """
     Merge new resource data into the state's resources.
     Fields from new_resource that are not None (or non-empty) overwrite the existing ones.
@@ -35,20 +39,28 @@ def update_resource(state: ConversationState, new_resource: ResourceBox) -> None
             state["resources"][key] = value
 
 def update_available_workers(state: ConversationState, new_workers: list[WorkerState]) -> None:
+    from src.chatbot.studio.models import WorkerState, ConversationState
     state["available_workers"] = new_workers
 
 
 def get_available_workers(state: ConversationState) -> list[WorkerState]:
+    from src.chatbot.studio.models import ConversationState, WorkerState
     return state["available_workers"]
 
 # Helper function to retrieve the current resources.
 def get_resource(state: ConversationState) -> ResourceBox:
+    from src.chatbot.studio.models import ConversationState
     return state["resources"]
 
 async def async_navigator_handler(
     agent: WorkerState,
     state: ConversationState
 ):
+    from src.chatbot.studio.models import WorkerState, ConversationState
+    from src.chatbot.baml_client.async_client import b
+    from src.chatbot.studio.prompts import SYSTEM_MESSAGE
+
+
     """
     Asynchronously handles navigation using the BAML client.
 
@@ -76,6 +88,7 @@ async def async_navigator_handler(
         "resource": get_resource(state)
         }
         # Call the BAML Navigate function asynchronously.
+        start_time = time.time()
         nav_stream = b.stream.Navigate(agent, payload)
         
         # Await the final, fully parsed response.
@@ -85,6 +98,7 @@ async def async_navigator_handler(
         next_tool = nav_response.next_tool
         print(f"Next tool: {next_tool}\n Justification: {nav_response.justification}")
         tool_args = nav_response.tool_args
+        print(f"Navigation completed in {time.time() - start_time:.2f} seconds.")
         return next_tool, tool_args, nav_response.justification
     except Exception as e:
         # Log the exception or handle it as needed
@@ -92,11 +106,15 @@ async def async_navigator_handler(
         raise
 
 def create_agent(llm, tools, msg):
+    from src.chatbot.studio.models import ConversationState
+    from langchain_core.messages import HumanMessage
+    from langgraph.graph import StateGraph
+    from langgraph.prebuilt import tools_condition, ToolNode
     llm_with_tools = llm.bind_tools(tools)
-    def chatbot(state: AgentState):
+    def chatbot(state: ConversationState):
         return {"messages": [llm_with_tools.invoke(state["messages"] + [{"role": "system", "content": msg}])]}
 
-    graph_builder = StateGraph(AgentState)
+    graph_builder = StateGraph(ConversationState)
     graph_builder.add_node("agent", chatbot)
 
     tool_node = ToolNode(tools=tools)
@@ -111,6 +129,11 @@ def create_agent(llm, tools, msg):
     return graph_builder.compile()
 
 async def create_worker(tools, func):
+    from src.chatbot.studio.models import ConversationState
+    from langchain_core.messages import HumanMessage
+    from langgraph.graph import StateGraph
+    from langgraph.prebuilt import tools_condition, ToolNode
+
     async def chatbot(state: ConversationState):
         response = await func(state)
         if response["result"]:

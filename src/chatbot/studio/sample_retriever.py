@@ -13,6 +13,7 @@ from studio.response_formatter import response_formatter_node
 from studio.validator import validator_node
 from studio.data_summarizer import data_summarizer_node
 from studio.basic_sample_info import basic_sample_info_retriever_node
+from studio.query_parser import query_parser_node
 
 # import env variables
 from dotenv import load_dotenv
@@ -35,7 +36,8 @@ def finish_node(state: ConversationState) -> Command[Literal["__end__"]]:
 
 def sampleRetrieverGraph(state: ConversationState, memory = None):
     builder = StateGraph(ConversationState)
-    builder.add_edge(START, "supervisor")
+    builder.add_edge(START, "query_parser")
+    builder.add_node("query_parser", query_parser_node)
     builder.add_node("supervisor", supervisor_node)
     builder.add_node("basic_sample_info_retriever", basic_sample_info_retriever_node)
     builder.add_node("data_summarizer", data_summarizer_node)
@@ -43,8 +45,6 @@ def sampleRetrieverGraph(state: ConversationState, memory = None):
     builder.add_node("responder", responder_node)
     builder.add_node("response_formatter", response_formatter_node)
     builder.add_node("FINISH", finish_node)
-    # builder.add_edge("responder", "FINISH")
-    # builder.add_edge("FINISH", END)
 
     # Compile graph
     if memory is not None:

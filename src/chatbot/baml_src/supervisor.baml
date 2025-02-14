@@ -1,11 +1,21 @@
 
 // Define Supervisor class
-
+// Create a function to validate the response from the responder.
+client<llm> SupervisorClient {
+  provider "openai"
+  options {
+    api_key env.OPENAI_API_KEY
+    model "gpt-4o-mini"
+    temperature 0.7
+  }
+}
 
 function Supervise(Messages: Payload, workers: Agent[]) -> Supervisor {
-    client MyClient
+    client SupervisorClient
   prompt #"
     You are a workflow supervisor that routes tasks to specialized workers based on user queries.
+
+    If none of the workers have the capability to answer the user query, then you should route the user query to the "responder" worker.
 
     Key responsibilities:
     1. Analyze the user query and available worker capabilities

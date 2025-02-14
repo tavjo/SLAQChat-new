@@ -115,9 +115,7 @@ class Payload {
 class Agent {
     agent string @description("The name of the agent")
     role string @description("The role of the agent")
-    // messages Messages @description("The messages in the conversation")
-    toolbox string[]? @description("The toolbox of the agent")
-    tools_description map<string, string>? @description("The description of the tools in the toolbox")
+    toolbox map<string, ToolMetadata>? @description("The toolbox of the agent")
 }
 
 class Validator {
@@ -126,4 +124,9 @@ class Validator {
     Clarifying_Question string? @description("A clarifying question to the user if Valid is false")
     justification string @description("The justification for your response")
     response Payload @description("same as inputMessage")
+}
+
+class ToolMetadata {
+    doc string @description("The documentation of the tool")
+    signature string @description("The signature of the tool")
 }

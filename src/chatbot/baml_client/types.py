@@ -42,8 +42,7 @@ def all_succeeded(checks: Dict[CheckName, Check]) -> bool:
 class Agent(BaseModel):
     agent: str
     role: str
-    toolbox: Optional[List[str]] = None
-    tools_description: Optional[Dict[str, str]] = None
+    toolbox: Optional[Dict[str, "ToolMetadata"]] = None
 
 class DataSummarizer(BaseModel):
     summary: str
@@ -131,6 +130,11 @@ class Payload(BaseModel):
     aggregatedMessages: Optional[List[str]] = None
     resource: Optional["ResourceBox"] = None
 
+class QueryParser(BaseModel):
+    parsed_query: str
+    tasks: List[str]
+    justification: str
+
 class ResourceBox(BaseModel):
     sample_metadata: Optional[List["Metadata"]] = None
     protocolUrl: Optional[str] = None
@@ -150,6 +154,10 @@ class ResponseFormatter(BaseModel):
 class Supervisor(BaseModel):
     Next_worker: "Agent"
     justification: str
+
+class ToolMetadata(BaseModel):
+    doc: str
+    signature: str
 
 class Validator(BaseModel):
     name: str

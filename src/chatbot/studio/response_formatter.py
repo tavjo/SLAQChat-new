@@ -1,6 +1,7 @@
 from langchain_core.messages import HumanMessage
 import sys
 import os
+import time
 
 # Add the project root directory to the Python path
 project_root = os.path.abspath(os.path.join(os.path.dirname(__file__), '../../..'))
@@ -17,24 +18,50 @@ from src.chatbot.studio.prompts import (
 )
 
 def response_formatter_node(state: ConversationState) -> Command[Literal["responder"]]:
-    payload = {
-        "system_message": SYSTEM_MESSAGE,
-        "user_query": state["messages"][0].content,
-        "aggregatedMessages": [msg.content for msg in state["messages"]],
-        "resource": get_resource(state)
-    }
-    result = baml.FormatResponse(payload)
-    print(result)
-    print(f"Agent: {result.name}\nJustification: {result.justification}")
-    goto = "responder"
-    name = "response_formatter"
-    updated_messages = state["messages"] + [HumanMessage(content=result.formattedResponse, name=name)]
-    return Command(
-        update={
-            "messages": updated_messages
-        },
-        goto=goto,
-    )
+    """
+    Formats the response based on the current conversation state and updates the conversation flow.
+
+    Args:
+        state (ConversationState): The current state of the conversation.
+
+    Returns:
+        Command[Literal["responder"]]: A command object with updated messages, directing the flow to the responder.
+
+    Raises:
+        Exception: If any error occurs during the response formatting process.
+    """
+    try:
+        payload = {
+            "system_message": SYSTEM_MESSAGE,
+            "user_query": state["messages"][0].content,
+            "aggregatedMessages": [msg.content for msg in state["messages"]],
+            "resource": get_resource(state)
+        }
+
+        start_time = time.time()
+        print("Formatting response...")
+        result = baml.FormatResponse(payload)
+        print(f"Response formatted in {time.time() - start_time:.2f} seconds.")
+
+        print(result)
+        print(f"Agent: {result.name}\nJustification: {result.justification}")
+        goto = "responder"
+        name = "response_formatter"
+        updated_messages = state["messages"] + [HumanMessage(content=result.formattedResponse, name=name)]
+        return Command(
+            update={
+                "messages": updated_messages
+            },
+            goto=goto,
+        )
+    except Exception as e:
+        print(f"An error occurred in response_formatter_node: {e}")
+        return Command(
+            update={
+                "messages": state["messages"]
+            },
+            goto="responder",
+        )
 
 
 # Example usage:

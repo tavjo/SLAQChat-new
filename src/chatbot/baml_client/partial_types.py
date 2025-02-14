@@ -37,8 +37,7 @@ class StreamState(BaseModel, Generic[T]):
 class Agent(BaseModel):
     agent: Optional[str] = None
     role: Optional[str] = None
-    toolbox: List[Optional[str]]
-    tools_description: Dict[str, Optional[str]]
+    toolbox: Dict[str, Optional["ToolMetadata"]]
 
 class DataSummarizer(BaseModel):
     summary: Optional[str] = None
@@ -126,6 +125,11 @@ class Payload(BaseModel):
     aggregatedMessages: List[Optional[str]]
     resource: Optional["ResourceBox"] = None
 
+class QueryParser(BaseModel):
+    parsed_query: Optional[str] = None
+    tasks: List[Optional[str]]
+    justification: Optional[str] = None
+
 class ResourceBox(BaseModel):
     sample_metadata: List["Metadata"]
     protocolUrl: Optional[str] = None
@@ -145,6 +149,10 @@ class ResponseFormatter(BaseModel):
 class Supervisor(BaseModel):
     Next_worker: Optional["Agent"] = None
     justification: Optional[str] = None
+
+class ToolMetadata(BaseModel):
+    doc: Optional[str] = None
+    signature: Optional[str] = None
 
 class Validator(BaseModel):
     name: Optional[str] = None

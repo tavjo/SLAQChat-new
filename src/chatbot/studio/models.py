@@ -95,11 +95,14 @@ class AgentState(TypedDict):
 
 # New unified state model: separate messages and resources.
 
+class ToolMetadata(TypedDict):
+    doc: str
+    signature: str
+
 class WorkerState(TypedDict):
     agent: str
     role: str
-    toolbox: list[str]
-    tools_description: dict[str, str]
+    toolbox: dict[str, ToolMetadata]
 
 class ConversationState(TypedDict):
     messages: List[BaseMessage]

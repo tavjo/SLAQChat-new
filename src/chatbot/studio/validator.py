@@ -1,6 +1,7 @@
 from langchain_core.messages import HumanMessage
 import sys
 import os
+import time
 
 # Add the project root directory to the Python path
 project_root = os.path.abspath(os.path.join(os.path.dirname(__file__), '../../..'))
@@ -17,28 +18,55 @@ from src.chatbot.studio.prompts import (
 )
 
 def validator_node(state: ConversationState) -> Command[Literal["responder"]]:
-    payload = {
-        "system_message": SYSTEM_MESSAGE,
-        "user_query": state["messages"][0].content,
-        "aggregatedMessages": [msg.content for msg in state["messages"]],
-        "resource": get_resource(state)
-    }
-    response = baml.ValidateResponse(payload)
-    print(f"Agent: {response.name}\nJustification: {response.justification}")
-    goto = "responder"
-    if response.Valid:
-        # new_aggregate = str(response.Valid) + "\n" + response.justification
-        new_aggregate = state["messages"][-2].content
-    else:
-        new_aggregate = response.Clarifying_Question
-    print(new_aggregate)
-    updated_messages = state["messages"] + [HumanMessage(content=new_aggregate, name="validator")]
-    return Command(
-        update={
-            "messages": updated_messages
-        },
-        goto=goto,
-    )
+    """
+    Validates the current conversation state and updates the conversation flow.
+
+    Args:
+        state (ConversationState): The current state of the conversation.
+
+    Returns:
+        Command[Literal["responder"]]: A command object with updated messages, directing the flow to the responder.
+
+    Raises:
+        Exception: If any error occurs during the validation process.
+    """
+    try:
+        payload = {
+            "system_message": SYSTEM_MESSAGE,
+            "user_query": state["messages"][0].content,
+            "aggregatedMessages": [msg.content for msg in state["messages"]],
+            "resource": get_resource(state)
+        }
+
+        start_time = time.time()
+        print("Validating response...")
+        response = baml.ValidateResponse(payload)
+        print(f"Validation completed in {time.time() - start_time:.2f} seconds.")
+
+        print(f"Agent: {response.name}\nJustification: {response.justification}")
+        goto = "responder"
+        if response.Valid:
+            # new_aggregate = str(response.Valid) + "\n" + response.justification
+            new_aggregate = state["messages"][-2].content
+        else:
+            new_aggregate = response.Clarifying_Question
+        print(new_aggregate)
+
+        updated_messages = state["messages"] + [HumanMessage(content=new_aggregate, name="validator")]
+        return Command(
+            update={
+                "messages": updated_messages
+            },
+            goto=goto,
+        )
+    except Exception as e:
+        print(f"An error occurred in validator_node: {e}")
+        return Command(
+            update={
+                "messages": state["messages"]
+            },
+            goto="responder",
+        )
 
 
 # Example usage:

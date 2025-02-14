@@ -96,6 +96,29 @@ class BamlAsyncClient:
       )
       return cast(types.Navigator, raw.cast_to(types, types, partial_types, False))
     
+    async def ParseQuery(
+        self,
+        user_query: str,tools: Dict[str, types.ToolMetadata],
+        baml_options: BamlCallOptions = {},
+    ) -> types.QueryParser:
+      __tb__ = baml_options.get("tb", None)
+      if __tb__ is not None:
+        tb = __tb__._tb # type: ignore (we know how to use this private attribute)
+      else:
+        tb = None
+      __cr__ = baml_options.get("client_registry", None)
+
+      raw = await self.__runtime.call_function(
+        "ParseQuery",
+        {
+          "user_query": user_query,"tools": tools,
+        },
+        self.__ctx_manager.get(),
+        tb,
+        __cr__,
+      )
+      return cast(types.QueryParser, raw.cast_to(types, types, partial_types, False))
+    
     async def Respond(
         self,
         inputMessage: types.Payload,workers: List[types.Agent],
@@ -257,6 +280,37 @@ class BamlStreamClient:
         raw,
         lambda x: cast(partial_types.Navigator, x.cast_to(types, types, partial_types, True)),
         lambda x: cast(types.Navigator, x.cast_to(types, types, partial_types, False)),
+        self.__ctx_manager.get(),
+      )
+    
+    def ParseQuery(
+        self,
+        user_query: str,tools: Dict[str, types.ToolMetadata],
+        baml_options: BamlCallOptions = {},
+    ) -> baml_py.BamlStream[partial_types.QueryParser, types.QueryParser]:
+      __tb__ = baml_options.get("tb", None)
+      if __tb__ is not None:
+        tb = __tb__._tb # type: ignore (we know how to use this private attribute)
+      else:
+        tb = None
+      __cr__ = baml_options.get("client_registry", None)
+
+      raw = self.__runtime.stream_function(
+        "ParseQuery",
+        {
+          "user_query": user_query,
+          "tools": tools,
+        },
+        None,
+        self.__ctx_manager.get(),
+        tb,
+        __cr__,
+      )
+
+      return baml_py.BamlStream[partial_types.QueryParser, types.QueryParser](
+        raw,
+        lambda x: cast(partial_types.QueryParser, x.cast_to(types, types, partial_types, True)),
+        lambda x: cast(types.QueryParser, x.cast_to(types, types, partial_types, False)),
         self.__ctx_manager.get(),
       )
     
