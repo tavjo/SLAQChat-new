@@ -40,7 +40,7 @@ def responder_node(state: ConversationState) -> Command[Literal["data_summarizer
             "resource": get_resource(state)
         }
 
-        if state["messages"][-1].name == "supervisor":
+        if state["messages"][-1].name == "supervisor" or state["messages"][-1].name == "FINISH":
             update_available_workers(state, WORK_GROUP_B)
 
         available_workers = get_available_workers(state)

@@ -2,9 +2,9 @@
 import streamlit as st
 from studio.sample_retriever import sampleRetrieverGraph
 from langchain_core.messages import HumanMessage
-from langgraph.checkpoint.sqlite import SqliteSaver
+# from langgraph.checkpoint.sqlite.aio import AsyncSqliteSaver
 # checkpoint
-import sqlite3
+# import aiosqlite
 from dotenv import load_dotenv
 # from langgraph.graph import MessagesState
 import asyncio
@@ -22,11 +22,6 @@ load_dotenv()
 os.environ["OPENAI_API_KEY"] = os.getenv("OPENAI_API_KEY")
 
 
-# In memory
-conn = sqlite3.connect(":memory:", check_same_thread = False)
-memory = SqliteSaver(conn)
-
-
 async def run_agent_chatbot():
     st.title("💬 NExtSEEK Chatbot")
     st.caption("🚀 Interact with the NExtSEEK AI assistant powered by LangGraph, BAML, and OpenAI.")
@@ -36,6 +31,13 @@ async def run_agent_chatbot():
         st.sidebar.markdown("[Review NExtSEEK documentation](https://koch-institute-mit.gitbook.io/mit-data-management-analysis-core)")
         st.sidebar.markdown("[Install your own instance of NExtSEEK](https://github.com/BMCBCC/NExtSEEK)")
         st.sidebar.markdown("[Visit our website for more information](https://www.nextseek.mit.edu/)")
+    
+    # if "memory" not in st.session_state:
+    # # In memory
+    #     st.session_state["conn"] = aiosqlite.connect(":memory:", check_same_thread = False)
+    #     st.session_state["memory"] = AsyncSqliteSaver(st.session_state["conn"])
+    
+    # memory = st.session_state["memory"]
 
     # Initialize session state for conversation
     if "conversation" not in st.session_state:
@@ -54,15 +56,14 @@ async def run_agent_chatbot():
         st.chat_message("user").write(user_input)
         messages = [HumanMessage(content=user_input)]
         initial_state: ConversationState = {"messages": messages}
+        graph = sampleRetrieverGraph(state = initial_state)
 
         # Create a HumanMessage and invoke the graph
         # config={"configurable":  {"thread_id": "1"}}
-        # result = graph.invoke({"messages": messages}, config)
         start_time = time.time()
-        graph = sampleRetrieverGraph(state = initial_state)
         result = await graph.ainvoke({"messages": messages})
         print(f"Total time taken: {time.time() - start_time:.2f} seconds")
-        
+
         # Extract and display AI response
         if "messages" in result and len(result["messages"]) > 1:
             ai_message = result["messages"][-1]

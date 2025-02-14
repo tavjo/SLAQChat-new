@@ -43,7 +43,7 @@ def query_parser_node(state: ConversationState) -> Command[Literal["supervisor",
 
         start_time = time.time()
         print("Parsing query...")
-        response = baml.ParseQuery(payload["user_query"], tools = module_to_json(backend.Tools.services.basic_sample_service))
+        response = baml.ParseQuery(payload["user_query"],context = payload,tools = module_to_json(backend.Tools.services.basic_sample_service))
         print(f"Query parsing completed in {time.time() - start_time:.2f} seconds.")
 
         parsed_query = response.parsed_query

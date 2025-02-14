@@ -12,12 +12,13 @@ client<llm> ParseQueryClient {
         temperature 0.7
     }
 }
-function ParseQuery(user_query: string, tools: map<string, ToolMetadata>) -> QueryParser {
+function ParseQuery(user_query: string,context: Payload, tools: map<string, ToolMetadata>) -> QueryParser {
     client ParseQueryClient
     prompt  #"
     You are a query parser that breaks down complex user queries into atomic tasks.
     Your goal is to create a clear sequence of tasks that can be executed to fully answer the query.
     Each task should be self-contained and specific.
+    Use conversation history to disambiguate the query. For instance, if the user has mentioned a sample by name in a previous message, then all queries henceforth should be about that sample unless otherwise specified.
 
     Example:
     User: "What are siblings of sample 123?"
@@ -28,6 +29,7 @@ function ParseQuery(user_query: string, tools: map<string, ToolMetadata>) -> Que
     If you are unsure about the tasks, you can ask the user for clarification by returning a question as the parsed_query and justification as "I am unsure about the tasks. Please clarify your query."
 
     {{ _.role("user") }} {{ user_query }}
+    {{ context }}
     {{ tools }}
     {{ ctx.output_format }}
   "#

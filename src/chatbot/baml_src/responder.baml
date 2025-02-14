@@ -11,6 +11,7 @@ function Respond(inputMessage: Payload, workers: Agent[]) -> Responder {
     4. Never repeat a worker
     5. After 'validator' worker, always transition to 'FINISH'
     6. Choose based on the current conversation state and needs
+    7. If no workers are available, always route to "FINISH"
 
     Selection Process:
     - Analyze the current conversation stage

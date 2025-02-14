@@ -95,7 +95,7 @@ class BamlSyncClient:
     
     def ParseQuery(
         self,
-        user_query: str,tools: Dict[str, types.ToolMetadata],
+        user_query: str,context: types.Payload,tools: Dict[str, types.ToolMetadata],
         baml_options: BamlCallOptions = {},
     ) -> types.QueryParser:
       __tb__ = baml_options.get("tb", None)
@@ -108,7 +108,7 @@ class BamlSyncClient:
       raw = self.__runtime.call_function_sync(
         "ParseQuery",
         {
-          "user_query": user_query,"tools": tools,
+          "user_query": user_query,"context": context,"tools": tools,
         },
         self.__ctx_manager.get(),
         tb,
@@ -283,7 +283,7 @@ class BamlStreamClient:
     
     def ParseQuery(
         self,
-        user_query: str,tools: Dict[str, types.ToolMetadata],
+        user_query: str,context: types.Payload,tools: Dict[str, types.ToolMetadata],
         baml_options: BamlCallOptions = {},
     ) -> baml_py.BamlSyncStream[partial_types.QueryParser, types.QueryParser]:
       __tb__ = baml_options.get("tb", None)
@@ -297,6 +297,7 @@ class BamlStreamClient:
         "ParseQuery",
         {
           "user_query": user_query,
+          "context": context,
           "tools": tools,
         },
         None,

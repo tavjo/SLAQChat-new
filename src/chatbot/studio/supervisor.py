@@ -34,7 +34,7 @@ def supervisor_node(state: ConversationState) -> Command[Literal["basic_sample_i
     try:
         if "resources" not in state or state["resources"] is None:
             state["resources"] = default_resource_box()
-        if "available_workers" not in state or state["available_workers"] is None:
+        if "available_workers" not in state or state["available_workers"] is None or state["messages"][-1].name == "query_parser":
             state["available_workers"] = WORK_GROUP_A
 
         payload = {

@@ -22,6 +22,7 @@ function Supervise(Messages: Payload, workers: Agent[]) -> Supervisor {
     2. Choose the most appropriate worker to handle the current task
     3. Track conversation context in aggregatedMessages
     4. Route to "responder" when ready to deliver final answer
+    5. If no workers are available, alwaysroute to "FINISH"
 
     {{ ctx.output_format }}
 
