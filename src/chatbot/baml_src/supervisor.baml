@@ -6,7 +6,7 @@ client<llm> SupervisorClient {
   options {
     api_key env.OPENAI_API_KEY
     model "gpt-4o-mini"
-    temperature 0.7
+    temperature 0
   }
 }
 

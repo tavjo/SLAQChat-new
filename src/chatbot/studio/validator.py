@@ -17,7 +17,7 @@ from src.chatbot.studio.prompts import (
     SYSTEM_MESSAGE
 )
 
-def validator_node(state: ConversationState) -> Command[Literal["responder"]]:
+def validator_node(state: ConversationState) -> Command[Literal["FINISH"]]:
     """
     Validates the current conversation state and updates the conversation flow.
 
@@ -44,7 +44,7 @@ def validator_node(state: ConversationState) -> Command[Literal["responder"]]:
         print(f"Validation completed in {time.time() - start_time:.2f} seconds.")
 
         print(f"Agent: {response.name}\nJustification: {response.justification}")
-        goto = "responder"
+        goto = "FINISH"
         if response.Valid:
             # new_aggregate = str(response.Valid) + "\n" + response.justification
             new_aggregate = state["messages"][-2].content
@@ -65,7 +65,7 @@ def validator_node(state: ConversationState) -> Command[Literal["responder"]]:
             update={
                 "messages": state["messages"]
             },
-            goto="responder",
+            goto="FINISH",
         )
 
 

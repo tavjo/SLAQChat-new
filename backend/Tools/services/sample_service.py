@@ -187,7 +187,7 @@ async def fetch_all_descendants(term: str) -> List[str]:
         return []
 
 
-async def fetchAllMetadata(term: str, filter: List[str] = None) -> List[dict]:
+async def fetchDescendantMetadata(term: str, filter: List[str] = None) -> List[dict]:
     """
     Fetch all metadata for a given term and its descendants. For the argument filter, choose one of the following (not exhaustive but most common):
             - 'PAV' = patient visit
