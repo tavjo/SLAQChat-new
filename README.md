@@ -10,13 +10,14 @@ You can find the source code for NExtSEEK [here](https://github.com/BMCBCC/NExtS
 
 This chatbot is built using LangGraph, a framework for building multi-agent systems. Currently, the chatbot is designed to answer questions about the samples housed in the NExtSEEK database.
 
-It is comprised of 5 main agents working in tandem to answer user questions:
+It is comprised of 1 central agent and multiple worker agents operating in tandem to answer user questions:
 
 1) **Supervisor Agent**: This agent is responsible for deciding which agent to route the user's question to.
 2) **Basic Sample Info Retriever Agent**: This agent is responsible for retrieving basic information about any sample from the NExtSEEK database.
-3) **Descendant Metadata Retriever Agent**: This agent is responsible for retrieving metadata about the descendants of a given sample. Given the hierarchical nature of how data is modeled in NExtSEEK, this is a crucial step in answering questions about the lifecycle of a specific sample throughout the course of the experiment.
+3) **Responder Agent**: This agent is responsible for coordinating the agents responsible for formatting and validating the response to the user's question retrieved by the other agents.
 4) **Data Summarizer Agent**: This agent is responsible for summarizing the data retrieved by the other agents.
-5) **Link Retriever Agent**: This agent is responsible for retrieving the links to the data and protocols associated with a given sample.
+5) **Response Formatter**: This agent is responsible for formatting the response to the user's question.
+6) **Validator Agent**: This agent is responsible for validating the response to the user's question.
 
 This chatbot is designed to be modular and extensible to support increasingly more complex queries and more sophisticated agents.
 
@@ -109,3 +110,4 @@ For any questions or feedback, please contact me (Taïsha Joseph) at taishajo@mi
 
 - [LangChain Academy](https://academy.langchain.com/) 
 - [Multi-Agent System with LangGraph](https://blog.futuresmart.ai/multi-agent-system-with-langgraph)
+- [Boundary markup language (BAML)](https://docs.boundaryml.com/guide/introduction/what-is-baml) 
