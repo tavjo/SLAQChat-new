@@ -17,7 +17,7 @@ from src.chatbot.studio.prompts import (
     SYSTEM_MESSAGE
 )
 
-def response_formatter_node(state: ConversationState) -> Command[Literal["responder"]]:
+def response_formatter_node(state: ConversationState) -> Command[Literal["validator"]]:
     """
     Formats the response based on the current conversation state and updates the conversation flow.
 
@@ -45,7 +45,7 @@ def response_formatter_node(state: ConversationState) -> Command[Literal["respon
 
         print(result)
         print(f"Agent: {result.name}\nJustification: {result.justification}")
-        goto = "responder"
+        goto = "validator"
         name = "response_formatter"
         updated_messages = state["messages"] + [HumanMessage(content=result.formattedResponse, name=name)]
         return Command(
@@ -60,7 +60,7 @@ def response_formatter_node(state: ConversationState) -> Command[Literal["respon
             update={
                 "messages": state["messages"]
             },
-            goto="responder",
+            goto="validator",
         )
 
 

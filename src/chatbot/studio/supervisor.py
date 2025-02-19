@@ -18,7 +18,7 @@ from src.chatbot.studio.prompts import (
     WORK_GROUP_A
 )
 
-def supervisor_node(state: ConversationState) -> Command[Literal["basic_sample_info_retriever", "responder", "FINISH"]]:
+def supervisor_node(state: ConversationState) -> Command[Literal["basic_sample_info_retriever","multi_sample_info_retriever", "responder", "FINISH"]]:
     """
     Supervises the current conversation state to determine the next worker and update the conversation flow.
 

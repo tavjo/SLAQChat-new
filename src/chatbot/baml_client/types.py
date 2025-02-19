@@ -44,79 +44,95 @@ class Agent(BaseModel):
     role: str
     toolbox: Optional[Dict[str, "ToolMetadata"]] = None
 
+class Column(BaseModel):
+    name: str
+    type: str
+    nullable: bool
+    default: Optional[str] = None
+    json_keys: Optional[List[str]] = None
+
 class DataSummarizer(BaseModel):
     summary: str
     messages: "Payload"
     justification: str
 
 class Metadata(BaseModel):
-    UID: Optional[str] = None
+    AntibodyParent: Optional[str] = None
+    BioSampleAccession: Optional[str] = None
+    BiosafetyLevel: Optional[str] = None
+    Catalog: Optional[str] = None
+    CellCount: Optional[str] = None
+    CellLine: Optional[str] = None
+    CellLineage: Optional[str] = None
+    Checksum_PrimaryData: Optional[str] = None
+    Checksum_PrimaryType: Optional[str] = None
+    CompensationFCSParent: Optional[str] = None
+    Concentration: Optional[str] = None
+    ConcentrationUnits: Optional[str] = None
+    File_PrimaryData: Optional[str] = None
+    Fixation: Optional[str] = None
+    Fixative: Optional[str] = None
+    FlowAmount: Optional[str] = None
+    FlowAmountUnits: Optional[str] = None
+    FMO: Optional[str] = None
+    Genotype: Optional[str] = None
+    Instrument: Optional[str] = None
+    InstrumentUser: Optional[str] = None
+    Link_PrimaryData: Optional[str] = None
+    Media: Optional[str] = None
     Name: Optional[str] = None
-    ID: Optional[str] = None
-    DateOfBirth: Optional[str] = None
-    Sex: Optional[str] = None
-    Species: Optional[str] = None
-    Origin: Optional[str] = None
-    Facility: Optional[str] = None
     Notes: Optional[str] = None
-    Contact: Optional[str] = None
-    Scientist: Optional[str] = None
+    Parent: Optional[str] = None
+    PassageNum: Optional[str] = None
+    Path_PrimaryData: Optional[str] = None
+    Phenotype: Optional[str] = None
+    Protocol: Optional[str] = None
+    Protocol_Stimulation: Optional[str] = None
+    Protocol_Treatment: Optional[str] = None
     Publish_uri: Optional[str] = None
-    CoScientist: Optional[str] = None
+    QC: Optional[str] = None
+    QC_notes: Optional[str] = None
+    ReagenCatalogNum: Optional[str] = None
+    Reagent: Optional[str] = None
+    ReagentBrand: Optional[str] = None
+    ReagentManufacturer: Optional[str] = None
+    Reference: Optional[str] = None
+    Repository: Optional[str] = None
+    RepositoryID: Optional[str] = None
+    Scientist: Optional[str] = None
+    SEEKSubmissionDate: Optional[str] = None
+    SampleCreationDate: Optional[str] = None
+    Software: Optional[str] = None
+    Source: Optional[str] = None
+    SourceFacility: Optional[str] = None
+    Species: Optional[str] = None
+    Stain: Optional[str] = None
+    StorageLocation: Optional[str] = None
+    StorageSite: Optional[str] = None
+    StorageTemperature: Optional[str] = None
+    StorageTemperatureUnits: Optional[str] = None
+    StorageType: Optional[str] = None
+    Stimulation: Optional[str] = None
+    Timepoint: Optional[str] = None
+    TotalProtein: Optional[str] = None
+    TotalProteinUnits: Optional[str] = None
     Treatment1: Optional[str] = None
-    Treatment1Type: Optional[str] = None
-    Treatment1Route: Optional[str] = None
-    Treatment1Date: Optional[str] = None
     Treatment1Dose: Optional[str] = None
     Treatment1DoseUnits: Optional[str] = None
+    Treatment1Reference: Optional[str] = None
     Treatment2: Optional[str] = None
-    Treatment2Type: Optional[str] = None
-    Treatment2Route: Optional[str] = None
-    Treatment2Date: Optional[str] = None
     Treatment2Dose: Optional[str] = None
     Treatment2DoseUnits: Optional[str] = None
-    NecropsyDate: Optional[str] = None
-    Cohort: Optional[str] = None
-    Supplier: Optional[str] = None
-    Treatment3: Optional[str] = None
-    Treatment3Type: Optional[str] = None
-    Protocol: Optional[str] = None
-    Study: Optional[str] = None
-    Funder: Optional[str] = None
-    TotalCFU: Optional[str] = None
-    LungCFU: Optional[str] = None
-    LymphNodeCFU: Optional[str] = None
-    TotalPathologyScore: Optional[str] = None
-    LungPathologyScore: Optional[str] = None
-    LymphNodePathologyScore: Optional[str] = None
-    CFUUnits: Optional[str] = None
-    AlternativeID: Optional[str] = None
-    StudyDesign: Optional[str] = None
-    Link_StudyDesign: Optional[str] = None
-    NewGranulomaCount: Optional[str] = None
-    nhp_id: Optional[str] = None
-    LINK: Optional[str] = None
-    START_DATE: Optional[str] = None
-    STOP_DATE: Optional[str] = None
-    TYPE: Optional[str] = None
-    PATIENT_ID: Optional[str] = None
-    EVENT_TYPE: Optional[str] = None
-    STUDY_DESIGN_NOTES: Optional[str] = None
-    DOSE: Optional[str] = None
-    TREATMENT_PARENT: Optional[str] = None
-    ORGAN_DETAIL: Optional[str] = None
-    ORGAN: Optional[str] = None
-    TREATMENT: Optional[str] = None
-    CFU: Optional[str] = None
-    NAME: Optional[str] = None
-    DOSE_UNITS: Optional[str] = None
-    SAMPLE_ID: Optional[str] = None
-    ROUTE: Optional[str] = None
-    PARENT: Optional[str] = None
-    Treatment3Route: Optional[str] = None
-    Treatment3Date: Optional[str] = None
-    Treatment3Dose: Optional[str] = None
-    Treatment3DoseUnits: Optional[str] = None
+    Treatment2Reference: Optional[str] = None
+    TreatmentDoseTime: Optional[str] = None
+    TreatmentRoute: Optional[str] = None
+    TreatmentTimeUnits: Optional[str] = None
+    TreatmentType: Optional[str] = None
+    Type: Optional[str] = None
+    UID: Optional[str] = None
+    ValidationMethod: Optional[str] = None
+    ValidationQuality: Optional[str] = None
+    Vendor: Optional[str] = None
 
 class Navigator(BaseModel):
     agent: "Agent"
@@ -140,6 +156,7 @@ class ResourceBox(BaseModel):
     protocolUrl: Optional[str] = None
     sampleUrl: Optional[str] = None
     UIDs: Optional[List[str]] = None
+    db_schema: Optional["Schema"] = None
 
 class Responder(BaseModel):
     Next_worker: "Agent"
@@ -151,9 +168,22 @@ class ResponseFormatter(BaseModel):
     messages: "Payload"
     justification: str
 
+class Schema(BaseModel):
+    tables: List["Table"]
+
+class SchemaMapper(BaseModel):
+    name: str
+    schema_map: "Schema"
+    pseudo_query: str
+    justification: str
+
 class Supervisor(BaseModel):
     Next_worker: "Agent"
     justification: str
+
+class Table(BaseModel):
+    name: str
+    columns: List["Column"]
 
 class ToolMetadata(BaseModel):
     doc: str

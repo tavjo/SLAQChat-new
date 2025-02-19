@@ -19,7 +19,8 @@ def default_resource_box() -> ResourceBox:
         "sample_metadata": [],
         "protocolURL": "",
         "sampleURL": "",
-        "UIDs": []
+        "UIDs": [],
+        "schema": None
     }
 def available_workers() -> list[WorkerState]:
     from src.chatbot.studio.models import WorkerState

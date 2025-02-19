@@ -4,12 +4,13 @@ import json
 import logging
 from pydantic import ValidationError
 from typing import List
-from sqlalchemy import text
+from sqlalchemy import text, bindparam
 import os
 import sys
 import pandas as pd
 import asyncio
 from backend.Tools.services.helpers import async_wrap
+from backend.Tools.services.multiSample_metadata_service import multi_sample_info_retrieval
 
 # Add the project root directory to the Python path
 project_root = os.path.abspath(os.path.join(os.path.dirname(__file__), '../../..'))
@@ -114,42 +115,31 @@ async def fetchDescendantMetadata(term: str, filter: List[str] = None) -> List[d
             return []
 
         # Prepare the SQL query with placeholders
-        placeholders = ",".join([f":uuid_{i}" for i in range(len(descendants_uuids))])
-        query = text(f"""
-        SELECT uuid, json_metadata
-        FROM seek_production.samples
-        WHERE uuid IN ({placeholders});
-        """)
+        # placeholders = ",".join([f":uuid_{i}" for i in range(len(descendants_uuids))])
+        # query = text(f"""
+        # SELECT uuid, json_metadata
+        # FROM seek_production.samples
+        # WHERE uuid IN ({placeholders});
+        # """)
+        query = text(
+            """
+            SELECT uuid, json_metadata
+            FROM seek_production.samples
+            WHERE uuid IN :uids;
+            """
+        )
+        query_text = query.bindparams(bindparam("uids", expanding=True))
+        all_metadata = execute_query(query_text.params(uids=descendants_uuids), 'DB_NAME')
         
         # Create a dictionary for bind parameters
-        bind_params = {f"uuid_{i}": uuid for i, uuid in enumerate(descendants_uuids)}
+        # bind_params = {f"uuid_{i}": uuid for i, uuid in enumerate(descendants_uuids)}
         
         # Execute the query
-        all_metadata = execute_query(query.bindparams(**bind_params), 'DB_NAME')
+        # all_metadata = execute_query(query.bindparams(**bind_params), 'DB_NAME')
         logger.info(f"Fetched metadata for {len(all_metadata)} entries.")
-        print(all_metadata)
-        return all_metadata
+        results = multi_sample_info_retrieval(descendants_uuids, all_metadata)
+        return results
 
     except Exception as e:
         logger.error(f"Error fetching metadata for term {term}: {e}")
         return []
-
-@async_wrap
-def get_metadata_by_uids(uids: List[str]) -> List[dict]:
-    """
-    Get all metadata for a given list of UIDs.
-    args:
-        uids (List[str]): The UIDs of the metadata to get.
-    returns:
-        List[dict]: A list of metadata dictionaries for the given UIDs.
-    """
-    query = text(
-        """
-        SELECT uuid, json_metadata
-        FROM seek_production.samples
-        WHERE uuid in :uids
-        """
-    )
-    metadata = execute_query(query.bindparams(uids=uids), 'DB_NAME')
-    return metadata
-

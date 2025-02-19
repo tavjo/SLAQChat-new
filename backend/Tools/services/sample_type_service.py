@@ -10,6 +10,7 @@ import sys
 import pandas as pd
 import asyncio
 from backend.Tools.services.helpers import async_wrap
+from backend.Tools.services.multiSample_metadata_service import multi_sample_info_retrieval
 
 # Add the project root directory to the Python path
 project_root = os.path.abspath(os.path.join(os.path.dirname(__file__), '../../..'))
@@ -76,7 +77,8 @@ def get_metadata_by_uids(uids: List[str]) -> List[dict]:
         """
     )
     metadata = execute_query(query.bindparams(uids=uids), 'DB_NAME')
-    return metadata
+    results = multi_sample_info_retrieval(uids, metadata)
+    return results
 
 
 async def get_metadata_by_type(type: str) -> List[dict]:

@@ -19,11 +19,15 @@ function Navigate(agent: Agent, payload: Payload) -> Navigator {
     3. Format tool arguments precisely based on the tool's requirements
     4. Provide clear justification for your tool selection
     5. Do not return a tool if none appear suitable to answer the user query. Instead return an empty string for the tool name and an empty list for the tool arguments.
+    6. You must carefully assess the metadadata on the tool selected to ensure that the arguments provided are valid. 
+    7. Also, when providing the tool arguments, use the mapped database schema in {{ payload.resource }} to determine the exact database terms to pass in. 
+    8. Do not make assumptions about the database schema. Only use the mapped schema in {{ payload.resource }}.
 
     Constraints:
     - The tool name must exactly match one in the agent's toolbox
     - Tool arguments should be specific and actionable
     - If no suitable tool exists, explain why in the justification
+    - Only return the values for the tool arguments as a list of strings 
 
     - Conversation Context:
     {{ payload }}

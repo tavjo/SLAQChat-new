@@ -28,81 +28,83 @@ class Supervisor {
     justification string @description("The justification for choosing the next worker")
 }
 
-class ResourceBox {
-    sample_metadata Metadata[]? @description("Sample metadata")
-    protocolUrl string? @description("Protocol download URL i.e.: https://nextseek.mit.edu/seek/sop/uid=<protocol_uid>")
-    sampleUrl string? @description("Sample URL i.e.: https://nextseek.mit.edu/seek/sampletree/uid=<sample_uid>")
-    UIDs string[]? @description("List of UIDs")
-}
-
 class Metadata {
-    UID string?
+    AntibodyParent string?
+    BioSampleAccession string?
+    BiosafetyLevel string?
+    Catalog string?
+    CellCount string?
+    CellLine string?
+    CellLineage string?
+    Checksum_PrimaryData string?
+    Checksum_PrimaryType string?
+    CompensationFCSParent string?
+    Concentration string?
+    ConcentrationUnits string?
+    File_PrimaryData string?
+    Fixation string?
+    Fixative string?
+    FlowAmount string?
+    FlowAmountUnits string?
+    FMO string?
+    Genotype string?
+    Instrument string?
+    InstrumentUser string?
+    Link_PrimaryData string?
+    Media string?
     Name string?
-    ID string?
-    DateOfBirth string?
-    Sex string?
-    Species string?
-    Origin string?
-    Facility string?
     Notes string?
-    Contact string?
-    Scientist string?
+    Parent string?
+    PassageNum string?
+    Path_PrimaryData string?
+    Phenotype string?
+    Protocol string?
+    Protocol_Stimulation string?
+    Protocol_Treatment string?
     Publish_uri string?
-    CoScientist string?
+    QC string?
+    QC_notes string?
+    ReagenCatalogNum string?
+    Reagent string?
+    ReagentBrand string?
+    ReagentManufacturer string?
+    Reference string?
+    Repository string?
+    RepositoryID string?
+    Scientist string?
+    SEEKSubmissionDate string?
+    SampleCreationDate string?
+    Software string?
+    Source string?
+    SourceFacility string?
+    Species string?
+    Stain string?
+    StorageLocation string?
+    StorageSite string?
+    StorageTemperature string?
+    StorageTemperatureUnits string?
+    StorageType string?
+    Stimulation string?
+    Timepoint string?
+    TotalProtein string?
+    TotalProteinUnits string?
     Treatment1 string?
-    Treatment1Type string?
-    Treatment1Route string?
-    Treatment1Date string?
     Treatment1Dose string?
     Treatment1DoseUnits string?
+    Treatment1Reference string?
     Treatment2 string?
-    Treatment2Type string?
-    Treatment2Route string?
-    Treatment2Date string?
     Treatment2Dose string?
     Treatment2DoseUnits string?
-    NecropsyDate string?
-    Cohort string?
-    Supplier string?
-    Treatment3 string?
-    Treatment3Type string?
-    Protocol string?
-    Study string?
-    Funder string?
-    TotalCFU string?
-    LungCFU string?
-    LymphNodeCFU string?
-    TotalPathologyScore string?
-    LungPathologyScore string?
-    LymphNodePathologyScore string?
-    CFUUnits string?
-    AlternativeID string?
-    StudyDesign string?
-    Link_StudyDesign string?
-    NewGranulomaCount string?
-    nhp_id string?
-    LINK string?
-    START_DATE string?
-    STOP_DATE string?
-    TYPE string?
-    PATIENT_ID string?
-    EVENT_TYPE string?
-    STUDY_DESIGN_NOTES string?
-    DOSE string?
-    TREATMENT_PARENT string?
-    ORGAN_DETAIL string?
-    ORGAN string?
-    TREATMENT string?
-    CFU string?
-    NAME string?
-    DOSE_UNITS string?
-    SAMPLE_ID string?
-    ROUTE string?
-    PARENT string?
-    Treatment3Route string?
-    Treatment3Date string?
-    Treatment3Dose string?
-    Treatment3DoseUnits string?
+    Treatment2Reference string?
+    TreatmentDoseTime string?
+    TreatmentRoute string?
+    TreatmentTimeUnits string?
+    TreatmentType string?
+    Type string?
+    UID string?
+    ValidationMethod string?
+    ValidationQuality string?
+    Vendor string?
 }
 
 class Payload {
@@ -129,4 +131,36 @@ class Validator {
 class ToolMetadata {
     doc string @description("The documentation of the tool")
     signature string @description("The signature of the tool")
+}
+
+class Table {
+    name string @description("The name of the table")
+    columns Column[] @description("The columns in the table")
+}
+
+class Column {
+    name string @description("The name of the column")
+    type string @description("The type of the column")
+    nullable bool @description("Whether the column can be null")
+    default string? @description("The default value of the column")
+    json_keys string[]? @description("The keys in the JSON column")
+}
+
+class Schema {
+    tables Table[] @description("The relevant tables in the database")
+}
+
+class SchemaMapper {
+    name string @description("The name of the agent: schema_mapper")
+    schema_map Schema @description("The mapped schema of the database based on the user query")
+    pseudo_query string @description("The proposed query based on schema mapping")
+    justification string @description("The justification for the mapping and proposed query")
+}
+
+class ResourceBox {
+    sample_metadata Metadata[]? @description("Sample metadata")
+    protocolUrl string? @description("Protocol download URL i.e.: https://nextseek.mit.edu/seek/sop/uid=<protocol_uid>")
+    sampleUrl string? @description("Sample URL i.e.: https://nextseek.mit.edu/seek/sampletree/uid=<sample_uid>")
+    UIDs string[]? @description("List of UIDs")
+    db_schema Schema? @description("A complete or partial schema of the database")
 }

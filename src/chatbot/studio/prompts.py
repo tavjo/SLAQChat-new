@@ -1,4 +1,5 @@
 from backend.Tools.services.sample_service import *
+from backend.Tools.services.multiSample_metadata_service import *
 # from src.chatbot.studio.response_formatter import response_formatter_node
 # from src.chatbot.studio.validator import validator_node
 # from src.chatbot.studio.data_summarizer import data_summarizer_node
@@ -6,6 +7,7 @@ from backend.Tools.services.module_to_json import functions_to_json
 
 
 TOOLSET1 = [get_sample_name, retrieve_sample_info, fetch_protocol, fetchChildren, fetch_all_descendants, add_links]
+TOOLSET2 = [get_metadata_by_uids, get_uids_by_terms_and_field]
 # TOOLSET2 = [data_summarizer_node, response_formatter_node, validator_node]
 
 
@@ -25,9 +27,14 @@ SYSTEM_MESSAGE = (
 
 WORK_GROUP_A = [
     {"agent": "basic_sample_info_retriever",
-    "role": "Retrieve basic metadata for the sample",
+    "role": "Retrieves basic metadata for a single sample",
     "toolbox": functions_to_json(TOOLSET1)
 },
+    {
+        "agent": "multi_sample_info_retriever",
+        "role": "Retrieves metadata for multiple samples",
+        "toolbox": functions_to_json(TOOLSET2)
+    },
     {
         "agent": "responder",
         "role": "Validate and respond to the user's query",
@@ -38,7 +45,7 @@ WORK_GROUP_A = [
 WORK_GROUP_B = [
         {
             "agent": "data_summarizer",
-            "role": '1.(optional) Summarize conversation and data if more than 8 elements in aggregatedMessages',
+            "role": '1.(optional) Summarize conversation and data if more than 10 elements in aggregatedMessages',
             "toolbox": None
         },
         {
@@ -49,11 +56,6 @@ WORK_GROUP_B = [
         {
             "agent": "validator",
             "role": "3. Validate the response",
-            "toolbox": None
-        },
-        {
-            "agent": "FINISH",
-            "role": "4.Finish the conversation",
             "toolbox": None
         }
     ]

@@ -142,6 +142,29 @@ class BamlAsyncClient:
       )
       return cast(types.Responder, raw.cast_to(types, types, partial_types, False))
     
+    async def RetrieveSchema(
+        self,
+        user_query: str,db_schema: types.Schema,
+        baml_options: BamlCallOptions = {},
+    ) -> types.SchemaMapper:
+      __tb__ = baml_options.get("tb", None)
+      if __tb__ is not None:
+        tb = __tb__._tb # type: ignore (we know how to use this private attribute)
+      else:
+        tb = None
+      __cr__ = baml_options.get("client_registry", None)
+
+      raw = await self.__runtime.call_function(
+        "RetrieveSchema",
+        {
+          "user_query": user_query,"db_schema": db_schema,
+        },
+        self.__ctx_manager.get(),
+        tb,
+        __cr__,
+      )
+      return cast(types.SchemaMapper, raw.cast_to(types, types, partial_types, False))
+    
     async def SummarizeData(
         self,
         inputMessage: types.Payload,
@@ -343,6 +366,37 @@ class BamlStreamClient:
         raw,
         lambda x: cast(partial_types.Responder, x.cast_to(types, types, partial_types, True)),
         lambda x: cast(types.Responder, x.cast_to(types, types, partial_types, False)),
+        self.__ctx_manager.get(),
+      )
+    
+    def RetrieveSchema(
+        self,
+        user_query: str,db_schema: types.Schema,
+        baml_options: BamlCallOptions = {},
+    ) -> baml_py.BamlStream[partial_types.SchemaMapper, types.SchemaMapper]:
+      __tb__ = baml_options.get("tb", None)
+      if __tb__ is not None:
+        tb = __tb__._tb # type: ignore (we know how to use this private attribute)
+      else:
+        tb = None
+      __cr__ = baml_options.get("client_registry", None)
+
+      raw = self.__runtime.stream_function(
+        "RetrieveSchema",
+        {
+          "user_query": user_query,
+          "db_schema": db_schema,
+        },
+        None,
+        self.__ctx_manager.get(),
+        tb,
+        __cr__,
+      )
+
+      return baml_py.BamlStream[partial_types.SchemaMapper, types.SchemaMapper](
+        raw,
+        lambda x: cast(partial_types.SchemaMapper, x.cast_to(types, types, partial_types, True)),
+        lambda x: cast(types.SchemaMapper, x.cast_to(types, types, partial_types, False)),
         self.__ctx_manager.get(),
       )
     

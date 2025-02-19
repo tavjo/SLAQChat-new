@@ -14,6 +14,8 @@ from studio.validator import validator_node
 from studio.data_summarizer import data_summarizer_node
 from studio.basic_sample_info import basic_sample_info_retriever_node
 from studio.query_parser import query_parser_node
+from studio.schema_retriever import schema_retriever_node
+from studio.advanced_sample_retriever import multi_sample_info_retriever_node
 
 # import env variables
 from dotenv import load_dotenv
@@ -44,6 +46,8 @@ def sampleRetrieverGraph(state: ConversationState, memory = None):
     builder.add_node("validator", validator_node)
     builder.add_node("responder", responder_node)
     builder.add_node("response_formatter", response_formatter_node)
+    builder.add_node("schema_mapper", schema_retriever_node)
+    builder.add_node("multi_sample_info_retriever", multi_sample_info_retriever_node)
     builder.add_node("FINISH", finish_node)
 
     # Compile graph

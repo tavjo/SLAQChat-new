@@ -19,7 +19,7 @@ from src.chatbot.studio.prompts import (
     SYSTEM_MESSAGE
 )
 
-def query_parser_node(state: ConversationState) -> Command[Literal["supervisor", "FINISH"]]:
+def query_parser_node(state: ConversationState) -> Command[Literal["schema_mapper", "FINISH"]]:
     """
     Receives a user query and breaks it down into a list of queries.
 
