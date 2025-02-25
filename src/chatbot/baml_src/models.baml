@@ -4,10 +4,16 @@ class DataSummarizer {
     justification string @description("The justification for your response")
 }
 
+class ToolArgs {
+    key_string string? @description("json_metadata key")
+    terms string[]? @description("terms to search for in the database")
+    uid string?|string[]? @description("uid of the sample. Can be a single uid or a list of uids")
+}
+
 class Navigator {
     agent Agent @description("The current agent in the conversation")
     next_tool string @description("The next tool to use from the agent's toolbox")
-    tool_args string[] @description("The arguments to pass to the tool")
+    tool_args ToolArgs @description("The arguments to pass to the tool")
     justification string @description("The justification for choosing the next tool")
 }
 
@@ -125,7 +131,7 @@ class Validator {
     Valid bool @description("Whether the response is valid")
     Clarifying_Question string? @description("A clarifying question to the user if Valid is false")
     justification string @description("The justification for your response")
-    response Payload @description("same as inputMessage")
+    response string? @description("same as inputMessage")
 }
 
 class ToolMetadata {
@@ -162,5 +168,5 @@ class ResourceBox {
     protocolUrl string? @description("Protocol download URL i.e.: https://nextseek.mit.edu/seek/sop/uid=<protocol_uid>")
     sampleUrl string? @description("Sample URL i.e.: https://nextseek.mit.edu/seek/sampletree/uid=<sample_uid>")
     UIDs string[]? @description("List of UIDs")
-    db_schema Schema? @description("A complete or partial schema of the database")
+    db_schema Schema?|string? @description("A complete or partial schema of the database")
 }

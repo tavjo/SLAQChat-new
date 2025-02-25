@@ -4,6 +4,8 @@ from backend.Tools.services.multiSample_metadata_service import *
 # from src.chatbot.studio.validator import validator_node
 # from src.chatbot.studio.data_summarizer import data_summarizer_node
 from backend.Tools.services.module_to_json import functions_to_json
+from langchain_core.messages import SystemMessage
+from src.chatbot.studio.models import ConversationState
 
 
 TOOLSET1 = [get_sample_name, retrieve_sample_info, fetch_protocol, fetchChildren, fetch_all_descendants, add_links]
@@ -24,6 +26,10 @@ WORKERS = ["validator", "data_summarizer", "FINISH"]
 SYSTEM_MESSAGE = (
     "You are a helpful assistant tasked with answering user questions about a data management platform called NExtSEEK."
 )
+
+INITIAL_STATE: ConversationState = {
+    "messages": [SystemMessage(content=SYSTEM_MESSAGE, name="system")]
+}
 
 WORK_GROUP_A = [
     {"agent": "basic_sample_info_retriever",
@@ -51,11 +57,6 @@ WORK_GROUP_B = [
         {
             "agent": "response_formatter",
             "role": "2. Format the response for the user",
-            "toolbox": None
-        },
-        {
-            "agent": "validator",
-            "role": "3. Validate the response",
             "toolbox": None
         }
     ]

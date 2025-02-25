@@ -1,6 +1,7 @@
 # Environment files
 *.env
 .env
+db_schema.json
 
 # Python
 __pycache__/

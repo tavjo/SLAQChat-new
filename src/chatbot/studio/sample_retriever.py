@@ -3,8 +3,8 @@
 from langgraph.graph import START, StateGraph, END
 from typing_extensions import Literal
 from langgraph.types import Command
-from pydantic import BaseModel, ConfigDict
-from langgraph.checkpoint.sqlite import SqliteSaver
+# from pydantic import BaseModel, ConfigDict
+# from langgraph.checkpoint.sqlite import SqliteSaver
 import os
 from studio.models import ConversationState
 from studio.supervisor import supervisor_node
@@ -13,10 +13,11 @@ from studio.response_formatter import response_formatter_node
 from studio.validator import validator_node
 from studio.data_summarizer import data_summarizer_node
 from studio.basic_sample_info import basic_sample_info_retriever_node
-from studio.query_parser import query_parser_node
+# from studio.query_parser import query_parser_node
 from studio.schema_retriever import schema_retriever_node
 from studio.advanced_sample_retriever import multi_sample_info_retriever_node
-
+from studio.conversationalist import conversationalist_node
+from studio.prompts import INITIAL_STATE
 # import env variables
 from dotenv import load_dotenv
 load_dotenv()
@@ -36,17 +37,17 @@ def finish_node(state: ConversationState) -> Command[Literal["__end__"]]:
     goto = END
     return Command(goto=goto)    
 
-def sampleRetrieverGraph(state: ConversationState, memory = None):
+def sampleRetrieverGraph(state: ConversationState = INITIAL_STATE, memory = None):
     builder = StateGraph(ConversationState)
-    builder.add_edge(START, "query_parser")
-    builder.add_node("query_parser", query_parser_node)
+    builder.add_edge(START, "conversationalist")
+    builder.add_node("conversationalist", conversationalist_node)
+    builder.add_node("schema_retriever", schema_retriever_node)
     builder.add_node("supervisor", supervisor_node)
     builder.add_node("basic_sample_info_retriever", basic_sample_info_retriever_node)
     builder.add_node("data_summarizer", data_summarizer_node)
     builder.add_node("validator", validator_node)
     builder.add_node("responder", responder_node)
     builder.add_node("response_formatter", response_formatter_node)
-    builder.add_node("schema_mapper", schema_retriever_node)
     builder.add_node("multi_sample_info_retriever", multi_sample_info_retriever_node)
     builder.add_node("FINISH", finish_node)
 

@@ -18,7 +18,7 @@ from src.chatbot.studio.prompts import (
     WORK_GROUP_B
 )
 
-def responder_node(state: ConversationState) -> Command[Literal["data_summarizer", "response_formatter", "validator", "FINISH"]]:
+def responder_node(state: ConversationState) -> Command[Literal["data_summarizer", "response_formatter", "FINISH"]]:
     """
     Processes the current conversation state to determine the next worker and update the conversation flow.
 
@@ -26,7 +26,7 @@ def responder_node(state: ConversationState) -> Command[Literal["data_summarizer
         state (ConversationState): The current state of the conversation.
 
     Returns:
-        Command[Literal["data_summarizer", "response_formatter","validator", "FINISH"]]: A command object with updated messages, resources, and available workers, directing the flow to the next worker.
+        Command[Literal["data_summarizer", "response_formatter", "FINISH"]]: A command object with updated messages, resources, and available workers, directing the flow to the next worker.
 
     Raises:
         Exception: If any error occurs during the response processing.
@@ -54,8 +54,11 @@ def responder_node(state: ConversationState) -> Command[Literal["data_summarizer
         update_available_workers(state, available_workers)
         print(f"Remaining Available Workers: {state['available_workers']}")
 
-        if goto == "validator":
-            print(state["messages"][-1].content)
+        # if goto == "validator":
+        #     print(state["messages"][-1].content)
+        #     updated_messages = state["messages"] + [HumanMessage(content=response.justification, name="responder")] + [HumanMessage(content=state["messages"][-1].content, name="responder")]
+        # else:
+        if state["messages"][-1].name == "response_formatter":
             updated_messages = state["messages"] + [HumanMessage(content=response.justification, name="responder")] + [HumanMessage(content=state["messages"][-1].content, name="responder")]
         else:
             updated_messages = state["messages"] + [HumanMessage(content=response.justification, name="responder")]

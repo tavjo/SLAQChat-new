@@ -11,11 +11,10 @@ from typing_extensions import Literal
 from langgraph.types import Command
 from src.chatbot.baml_client import b as baml
 from src.chatbot.studio.models import ConversationState
-from src.chatbot.studio.helpers import get_resource
+from src.chatbot.studio.helpers import get_resource, update_messages
 
-from src.chatbot.studio.prompts import (
-    SYSTEM_MESSAGE
-)
+# from src.chatbot.studio.prompts import (
+# )
 
 def validator_node(state: ConversationState) -> Command[Literal["FINISH"]]:
     """
@@ -25,15 +24,15 @@ def validator_node(state: ConversationState) -> Command[Literal["FINISH"]]:
         state (ConversationState): The current state of the conversation.
 
     Returns:
-        Command[Literal["responder"]]: A command object with updated messages, directing the flow to the responder.
+        Command[Literal["FINISH"]]: A command object with updated messages, directing the flow to FINISH.
 
     Raises:
         Exception: If any error occurs during the validation process.
     """
     try:
         payload = {
-            "system_message": SYSTEM_MESSAGE,
-            "user_query": state["messages"][0].content,
+            "system_message": state["messages"][0].content,
+            "user_query": state["messages"][1].content,
             "aggregatedMessages": [msg.content for msg in state["messages"]],
             "resource": get_resource(state)
         }
@@ -47,25 +46,23 @@ def validator_node(state: ConversationState) -> Command[Literal["FINISH"]]:
         goto = "FINISH"
         if response.Valid:
             # new_aggregate = str(response.Valid) + "\n" + response.justification
-            new_aggregate = state["messages"][-2].content
+            new_aggregate = state["messages"][-1].content
         else:
             new_aggregate = response.Clarifying_Question
         print(new_aggregate)
 
-        updated_messages = state["messages"] + [HumanMessage(content=new_aggregate, name="validator")]
+        updated_messages = [HumanMessage(content=new_aggregate, name="validator")]
+        update_messages(state, updated_messages)
         return Command(
             update={
                 "messages": updated_messages
             },
-            goto=goto,
+            goto=goto
         )
     except Exception as e:
         print(f"An error occurred in validator_node: {e}")
         return Command(
-            update={
-                "messages": state["messages"]
-            },
-            goto="FINISH",
+            goto="FINISH"
         )
 
 

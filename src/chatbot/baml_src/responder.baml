@@ -9,9 +9,8 @@ function Respond(inputMessage: Payload, workers: Agent[]) -> Responder {
     2. Workers must be used in the order of the list 
     3. Workers with 'optional' in name should only be used when necessary
     4. Never repeat a worker
-    5. After 'validator' worker, always transition to 'FINISH'
-    6. Choose based on the current conversation state and needs
-    7. If no workers are available, always route to "FINISH"
+    5. Choose based on the current conversation state and needs
+    6. If an error occurred in a previous worker, summarize the error and return the next worker.
 
     Selection Process:
     - Analyze the current conversation stage

@@ -44,6 +44,13 @@ class Agent(BaseModel):
     role: str
     toolbox: Optional[Dict[str, "ToolMetadata"]] = None
 
+class ChatResponse(BaseModel):
+    name: str
+    retrieve_info: bool
+    response: Optional[str] = None
+    user_query: str
+    justification: str
+
 class Column(BaseModel):
     name: str
     type: str
@@ -137,7 +144,7 @@ class Metadata(BaseModel):
 class Navigator(BaseModel):
     agent: "Agent"
     next_tool: str
-    tool_args: List[str]
+    tool_args: "ToolArgs"
     justification: str
 
 class Payload(BaseModel):
@@ -156,7 +163,7 @@ class ResourceBox(BaseModel):
     protocolUrl: Optional[str] = None
     sampleUrl: Optional[str] = None
     UIDs: Optional[List[str]] = None
-    db_schema: Optional["Schema"] = None
+    db_schema: Union[Optional["Schema"], Optional[str]]
 
 class Responder(BaseModel):
     Next_worker: "Agent"
@@ -185,6 +192,11 @@ class Table(BaseModel):
     name: str
     columns: List["Column"]
 
+class ToolArgs(BaseModel):
+    key_string: Optional[str] = None
+    terms: Optional[List[str]] = None
+    uid: Union[Optional[str], Optional[List[str]]]
+
 class ToolMetadata(BaseModel):
     doc: str
     signature: str
@@ -194,4 +206,4 @@ class Validator(BaseModel):
     Valid: bool
     Clarifying_Question: Optional[str] = None
     justification: str
-    response: "Payload"
+    response: Optional[str] = None

@@ -4,6 +4,8 @@ from langchain_core.messages import BaseMessage
 from langgraph.graph.message import add_messages
 from pydantic import BaseModel
 from typing import List
+from langgraph.managed import IsLastStep, RemainingSteps
+from langgraph.prebuilt.chat_agent_executor import StructuredResponse
 
 class Column(BaseModel):
     name: str
@@ -17,7 +19,7 @@ class Table(BaseModel):
     columns: List[Column]
 
 class DBSchema(BaseModel):
-    tables: List[Table]
+    tables: List[Table] | str
 
 
 class Metadata(BaseModel):
@@ -102,7 +104,7 @@ class Metadata(BaseModel):
 
 
 class ResourceBox(TypedDict):
-    sample_metadata: Optional[Metadata]
+    sample_metadata: Optional[Metadata] | Optional[List[Metadata]]
     db_schema: Optional[DBSchema]
     protocolURL: Optional[str]
     sampleURL: Optional[str]
@@ -136,3 +138,11 @@ class ConversationState(TypedDict):
     messages: List[BaseMessage]
     resources: Optional[ResourceBox]
     available_workers: Optional[list[WorkerState]]
+    is_last_step: IsLastStep
+    remaining_steps: RemainingSteps
+    structured_response: StructuredResponse
+
+class SchemaMapperState(BaseModel):
+    relevant_keys: List[str]
+    schema_map: str
+    justification: str

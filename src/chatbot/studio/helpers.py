@@ -8,9 +8,12 @@ from src.chatbot.studio.models import ResourceBox, WorkerState, ConversationStat
 # from src.chatbot.studio.prompts import SYSTEM_MESSAGE
 # from langgraph.graph import StateGraph
 # from langgraph.prebuilt import tools_condition, ToolNode
-# from langchain_core.messages import HumanMessage
+from langchain_core.messages import HumanMessage, AnyMessage, SystemMessage
 import time
 
+def available_workers() -> list[WorkerState]:
+    from src.chatbot.studio.models import WorkerState
+    return []
 
 # Example: A default empty resources function if needed.
 def default_resource_box() -> ResourceBox:
@@ -20,24 +23,23 @@ def default_resource_box() -> ResourceBox:
         "protocolURL": "",
         "sampleURL": "",
         "UIDs": [],
-        "schema": None
+        "db_schema": None
     }
-def available_workers() -> list[WorkerState]:
-    from src.chatbot.studio.models import WorkerState
-    return []
 
 # Helper function to update the resource information.
 def update_resource(state: ConversationState, new_resource: ResourceBox) -> None:
     from src.chatbot.studio.models import ResourceBox, ConversationState
     """
     Merge new resource data into the state's resources.
-    Fields from new_resource that are not None (or non-empty) overwrite the existing ones.
+    Fields from new_resource that are explicitly provided will overwrite the existing ones,
+    including empty values (empty lists, empty strings).
     """
     if "resources" not in state or state["resources"] is None:
         state["resources"] = default_resource_box()
+    
     for key, value in new_resource.items():
-        if value:  # You might want to check more specifically depending on the type.
-            state["resources"][key] = value
+        if key in state["resources"]:  # Only update keys that exist in the ResourceBox
+            state["resources"][key] = value  # Update even if value is empty/falsy
 
 def update_available_workers(state: ConversationState, new_workers: list[WorkerState]) -> None:
     from src.chatbot.studio.models import WorkerState, ConversationState
@@ -50,8 +52,37 @@ def get_available_workers(state: ConversationState) -> list[WorkerState]:
 
 # Helper function to retrieve the current resources.
 def get_resource(state: ConversationState) -> ResourceBox:
-    from src.chatbot.studio.models import ConversationState
-    return state["resources"]
+    from src.chatbot.studio.models import ConversationState, ResourceBox
+    
+    # If resources don't exist or are None, return default ResourceBox
+    if "resources" not in state or state["resources"] is None:
+        return default_resource_box()
+        
+    # Ensure returned value is a valid ResourceBox
+    resources = state["resources"]
+    if not isinstance(resources, dict):
+        # If not a dict, return default
+        return default_resource_box()
+        
+    # Validate the structure or convert to proper ResourceBox format
+    resource_box: ResourceBox = {
+        "sample_metadata": resources.get("sample_metadata", []),
+        "protocolURL": resources.get("protocolURL", ""),
+        "sampleURL": resources.get("sampleURL", ""),
+        "UIDs": resources.get("UIDs", []),
+        "db_schema": resources.get("db_schema", None)
+    }
+    
+    return resource_box
+
+def get_messages(state: ConversationState) -> list[AnyMessage]:
+    return state["messages"]
+
+def update_messages(state: ConversationState, new_messages: list[AnyMessage]) -> None:
+    if state["messages"][0].name == "system" and len(state["messages"]) == 1:
+        state["messages"] = get_messages(state) + new_messages
+    else:
+        state["messages"] = SystemMessage(content=state["messages"][0].content, name="system") + new_messages
 
 async def async_navigator_handler(
     agent: WorkerState,
@@ -84,7 +115,7 @@ async def async_navigator_handler(
 
         payload = {
         "system_message": SYSTEM_MESSAGE,
-        "user_query": state["messages"][0].content,
+        "user_query": state["messages"][1].content,
         "aggregatedMessages": [msg.content for msg in state["messages"]],
         "resource": get_resource(state)
         }
@@ -97,7 +128,7 @@ async def async_navigator_handler(
         
         # Extract the tool choice and its argument.
         next_tool = nav_response.next_tool
-        print(f"Next tool: {next_tool}\n Justification: {nav_response.justification}")
+        # print(f"Next tool: {next_tool}\n Justification: {nav_response.justification}")
         tool_args = nav_response.tool_args
         print(f"Navigation completed in {time.time() - start_time:.2f} seconds.")
         return next_tool, tool_args, nav_response.justification

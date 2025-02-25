@@ -7,6 +7,7 @@ import pandas as pd
 import logging
 from dotenv import load_dotenv
 import json
+from backend.Tools.schemas import ALLOWED_KEYS
 load_dotenv()
 
 def get_db_connection(database_name: str = 'DB_NAME'):
@@ -37,7 +38,7 @@ def get_db_connection(database_name: str = 'DB_NAME'):
         logging.error(f"Error connecting to the database: {e}")
         raise
 
-def get_json_keys(table: str, json_column: str, database_name: str = 'DB_NAME', sample_size: int = 20):
+def get_json_keys(table: str, json_column: str, database_name: str = 'DB_NAME', sample_size: int = len(ALLOWED_KEYS)):
     """
     Query a sample of rows from a JSON column and return the union of keys.
     """
@@ -59,11 +60,12 @@ def get_json_keys(table: str, json_column: str, database_name: str = 'DB_NAME', 
         logging.error(f"Error extracting JSON keys from {json_column} in {table}: {e}")
     return []
 
-def get_database_schema(database_name: str = 'DB_NAME'):
+def get_database_schema(database_name: str = 'DB_NAME', table_names: list[str] = ['samples']):
     """
     Connect to the database and dynamically retrieve the schema.
     Args:
-        database_name (str): The name of the database to connect to.
+        database_name (str): The name of the database to connect to. Default is 'DB_NAME'.
+        table_names (list[str]): The names of the tables to connect to. Default is ['samples'].
     Returns:
         dict: A dictionary mapping each table to its list of columns.
     """
@@ -73,7 +75,10 @@ def get_database_schema(database_name: str = 'DB_NAME'):
     db_name = engine.url.database
     
     schema = {"database": db_name, "tables": []}
-    for table in inspector.get_table_names():
+    # Check if table names provided are in the database:
+    tbl_list = [tbl for tbl in table_names if tbl in inspector.get_table_names()]
+    for table in tbl_list:
+        # filter table_info to only include the table_name
         table_info = {"name": f"{db_name}.{table}", "columns": []}
         for col in inspector.get_columns(table):
             # Collect useful details for each column
@@ -126,12 +131,12 @@ def execute_query(query, database_name: str = 'DB_NAME'):
 from cachetools import TTLCache, cached
 
 # Create a cache that holds 1 schema and expires after 1800 seconds (30 minutes)
-schema_cache = TTLCache(maxsize=1, ttl=1800)
+schema_cache = TTLCache(maxsize=1, ttl=300)
 
 @cached(cache=schema_cache)
-def get_cached_database_schema(database_name: str = 'DB_NAME'):
+def get_cached_database_schema(database_name: str = 'DB_NAME', table_names: list[str] = ['samples']):
     """
     Retrieve the database schema using caching.
     This will query the database only if the cache has expired.
     """
-    return get_database_schema(database_name)
+    return get_database_schema()

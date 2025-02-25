@@ -27,7 +27,7 @@ function Navigate(agent: Agent, payload: Payload) -> Navigator {
     - The tool name must exactly match one in the agent's toolbox
     - Tool arguments should be specific and actionable
     - If no suitable tool exists, explain why in the justification
-    - Only return the values for the tool arguments as a list of strings 
+    - Only return the values for the tool arguments 
 
     - Conversation Context:
     {{ payload }}

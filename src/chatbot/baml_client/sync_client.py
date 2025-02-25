@@ -47,6 +47,29 @@ class BamlSyncClient:
       return self.__stream_client
 
     
+    def Conversationalist(
+        self,
+        user_query: str,
+        baml_options: BamlCallOptions = {},
+    ) -> types.ChatResponse:
+      __tb__ = baml_options.get("tb", None)
+      if __tb__ is not None:
+        tb = __tb__._tb # type: ignore (we know how to use this private attribute)
+      else:
+        tb = None
+      __cr__ = baml_options.get("client_registry", None)
+
+      raw = self.__runtime.call_function_sync(
+        "Conversationalist",
+        {
+          "user_query": user_query,
+        },
+        self.__ctx_manager.get(),
+        tb,
+        __cr__,
+      )
+      return cast(types.ChatResponse, raw.cast_to(types, types, partial_types, False))
+    
     def FormatResponse(
         self,
         messages: types.Payload,
@@ -242,6 +265,36 @@ class BamlStreamClient:
       self.__runtime = runtime
       self.__ctx_manager = ctx_manager
 
+    
+    def Conversationalist(
+        self,
+        user_query: str,
+        baml_options: BamlCallOptions = {},
+    ) -> baml_py.BamlSyncStream[partial_types.ChatResponse, types.ChatResponse]:
+      __tb__ = baml_options.get("tb", None)
+      if __tb__ is not None:
+        tb = __tb__._tb # type: ignore (we know how to use this private attribute)
+      else:
+        tb = None
+      __cr__ = baml_options.get("client_registry", None)
+
+      raw = self.__runtime.stream_function_sync(
+        "Conversationalist",
+        {
+          "user_query": user_query,
+        },
+        None,
+        self.__ctx_manager.get(),
+        tb,
+        __cr__,
+      )
+
+      return baml_py.BamlSyncStream[partial_types.ChatResponse, types.ChatResponse](
+        raw,
+        lambda x: cast(partial_types.ChatResponse, x.cast_to(types, types, partial_types, True)),
+        lambda x: cast(types.ChatResponse, x.cast_to(types, types, partial_types, False)),
+        self.__ctx_manager.get(),
+      )
     
     def FormatResponse(
         self,

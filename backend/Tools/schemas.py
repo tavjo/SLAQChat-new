@@ -74,6 +74,7 @@ from typing import Optional, Any
 #     Treatment3DoseUnits: Optional[Any] = None
 
 class Metadata(BaseModel):
+    Analyte: Optional[str] = None
     AntibodyParent: Optional[str] = None
     BioSampleAccession: Optional[str] = None
     BiosafetyLevel: Optional[str] = None
@@ -83,10 +84,12 @@ class Metadata(BaseModel):
     CellLineage: Optional[str] = None
     Checksum_PrimaryData: Optional[str] = None
     Checksum_PrimaryType: Optional[str] = None
+    Clone: Optional[str] = None
     Cohort: Optional[str] = None
     CompensationFCSParent: Optional[str] = None
     Concentration: Optional[str] = None
     ConcentrationUnits: Optional[str] = None
+    ExperimentType: Optional[str] = None
     File_PrimaryData: Optional[str] = None
     Fixation: Optional[str] = None
     Fixative: Optional[str] = None

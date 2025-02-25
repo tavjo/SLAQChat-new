@@ -11,15 +11,15 @@ from typing_extensions import Literal
 from langgraph.types import Command
 from src.chatbot.baml_client import b as baml
 from src.chatbot.studio.models import ConversationState
-from src.chatbot.studio.helpers import create_agent, get_resource, default_resource_box
+from src.chatbot.studio.helpers import default_resource_box, update_messages
 import backend.Tools.services.basic_sample_service
-from backend.Tools.services.module_to_json import functions_to_json, module_to_json
+from backend.Tools.services.module_to_json import module_to_json
 
 from src.chatbot.studio.prompts import (
-    SYSTEM_MESSAGE
+    INITIAL_STATE
 )
 
-def query_parser_node(state: ConversationState) -> Command[Literal["schema_mapper", "FINISH"]]:
+def query_parser_node(state: ConversationState = INITIAL_STATE) -> Command[Literal["schema_mapper", "FINISH"]]:
     """
     Receives a user query and breaks it down into a list of queries.
 
@@ -35,10 +35,10 @@ def query_parser_node(state: ConversationState) -> Command[Literal["schema_mappe
     try:
 
         payload = {
-            "system_message": SYSTEM_MESSAGE,
-            "user_query": state["messages"][0].content,
+            "system_message": state["messages"][0].content,
+            "user_query": state["messages"][1].content,
             "aggregatedMessages": [msg.content for msg in state["messages"]],
-            "resource": default_resource_box()
+            "resource": default_resource_box
         }
 
         start_time = time.time()
@@ -55,7 +55,7 @@ def query_parser_node(state: ConversationState) -> Command[Literal["schema_mappe
             update={
                 "messages": updated_messages
             },
-            goto="supervisor"
+            goto="schema_mapper"
         )
     except Exception as e:
         updated_messages = state["messages"] + [HumanMessage(content=f"I am sorry, I am unable to retrieve the information. Please try again later. You can visit the website for more information.", name = "query_parser")]
@@ -70,7 +70,9 @@ def query_parser_node(state: ConversationState) -> Command[Literal["schema_mappe
 
 # Example usage:
 if __name__ == "__main__":
-    initial_state: ConversationState = {
-        "messages": [HumanMessage(content="Can you tell me more about the sample with UID PAV-220630FLY-1031?")]
-    }
-    query_parser_node(initial_state)
+    # initial_state: ConversationState = {
+    #     "messages": [HumanMessage(content="Can you tell me more about the sample with UID PAV-220630FLY-1031?")]
+    # }
+    messages = [HumanMessage(content="Can you tell me more about the sample with UID PAV-220630FLY-1031?")]
+    update_messages(INITIAL_STATE, messages)
+    query_parser_node()

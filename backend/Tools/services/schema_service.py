@@ -9,6 +9,7 @@ import openai
 import sys
 import time
 import logging
+import asyncio
 
 logger = logging.getLogger(__name__)
 
@@ -19,49 +20,46 @@ sys.path.append(project_root)
 from backend.Tools.core.database import get_cached_database_schema
 
 
-def extract_relevant_schema(database_name: str = 'DB_NAME'):
-    start_time = time.time()
-    # Retrieve up-to-date schema (cached)
-    schema = get_cached_database_schema(database_name)
-    schema_json = json.dumps(schema, indent=2)
-    # save schema to file
-    # with open('db_schema.json', 'w') as f:
-    #     f.write(schema_json)
-    # logger.info(f"Schema: {schema_json}")
-    schema = json.loads(schema_json)
-    schema = schema["tables"]
-    print(schema[:2])
-    # # Build a prompt for your LLM agent
-    # system_prompt = (
-    #     "You are a schema extraction agent. Below is the current database schema (in JSON format) and a user query. "
-    #     "Ignore irrelevant tables. Focus on identifying the exact table and column that contain sample-specific genotype information. "
-    #     "In our database, the table 'seek_production.samples' contains a JSON column 'json_metadata' that holds sample-specific data. "
-    #     "From this column, extract the keys that are used for identifying a sample according to key words from the user query. "
-    #     "It is better to retrieve more keys than is necessary than to retrieve too few keys. "
-    #     "Return your answer in JSON format like this:\n"
-    #     '{"tables": [{"name": "<fully_qualified_table>", "columns": [{"name": "<column_name>", "json_keys": ["<key1>", "<key2>"]}]}]}\n\n'
-    #     "Database Schema:\n" + schema_json +
-    #     "\nUser Query: " + user_query
-    # )
-    
-    # # Call your LLM (this example uses OpenAI's ChatCompletion API)
-    # response = openai.chat.completions.create(
-    #     model="gpt-4o-mini",
-    #     temperature=0,
-    #     messages=[
-    #         {"role": "system", "content": system_prompt},
-    #     ]
-    # )
-    
-    # answer = response.choices[0].message.content.strip()
-    end_time = time.time()
-    print(f"Time taken: {end_time - start_time} seconds")
+async def extract_relevant_schema(database_name: str = 'DB_NAME', table_names: list[str] = ['samples']):
+    """
+    Extracts the relevant schema for a given database.
+
+    This function retrieves the cached database schema, processes it to extract
+    relevant tables, and logs the time taken for the operation.
+
+    Args:
+        database_name (str): The name of the database to extract the schema from. Defaults to 'DB_NAME'.
+        table_names (list[str]): The names of the tables to extract the schema from. Defaults to ['samples'].
+    Returns:
+        list: A list of relevant tables with associated columns from the database schema.
+
+    Raises:
+        Exception: If there is an error in retrieving or processing the schema.
+    """
+    try:
+        logger.info(f"Retrieving schema for database '{database_name}'")
+        start_time = time.time()
+        # Retrieve up-to-date schema (cached)
+        schema = get_cached_database_schema()
+        schema_json = json.dumps(schema, indent=2)
+        # save schema to file
+        with open('db_schema.json', 'w') as f:
+            f.write(schema_json)
+        schema = json.loads(schema_json)
+        schema = schema["tables"]
+
+    except Exception as e:
+        logger.error(f"Error extracting schema for database '{database_name}': {e}")
+        raise
+    finally:
+        end_time = time.time()
+        logger.info(f"Retrived schema in : {end_time - start_time} seconds")
     return schema
 
 # Example usage
 if __name__ == "__main__":
     # user_query = "Retrieve UIDs of all samples of this genotype: 'RaDR+/+; GPT+/+; Aag -/-'"
-    result = extract_relevant_schema(database_name='DB_NAME')
-    # print("Extracted Schema Mapping:", result)
+    result = asyncio.run(extract_relevant_schema())
+    print("Extracted Schema Mapping:", result)
 
 

@@ -11,21 +11,25 @@ sys.path.append(project_root)
 # from backend.Tools.services.sample_service import *
 from backend.Tools.services.module_to_json import functions_to_json
 
-from src.chatbot.studio.helpers import async_navigator_handler, update_resource, default_resource_box
+from src.chatbot.studio.helpers import update_resource, default_resource_box, update_messages, async_navigator_handler
 import asyncio
-from langchain_core.messages import HumanMessage
+from langchain_core.messages import HumanMessage, SystemMessage
 from src.chatbot.studio.models import ConversationState
 from src.chatbot.studio.helpers import create_worker#, create_agent
 from langgraph.types import Command
 from typing_extensions import Literal
 # from langchain_openai import ChatOpenAI
+# from langgraph.prebuilt import create_react_agent
+from dotenv import load_dotenv
 
-from src.chatbot.studio.prompts import TOOLSET2
+load_dotenv()
+
+from src.chatbot.studio.prompts import TOOLSET2, INITIAL_STATE
 TOOL_DISPATCH = {
     attr.__name__: attr for attr in TOOLSET2
 }
 
-async def multi_sample_info(state: ConversationState)->dict|None:
+async def multi_sample_info(state: ConversationState = INITIAL_STATE)->dict|None:
     """
     Main function to handle the asynchronous navigation and tool execution.
 
@@ -48,15 +52,21 @@ async def multi_sample_info(state: ConversationState)->dict|None:
         # Call the async navigator handler
         next_tool, tool_args, justification = await async_navigator_handler(AGENT, state)
 
-        print(f"Next tool: {next_tool}")
-        print(f"Tool args: {tool_args}")
-
+        # print(f"Next tool: {next_tool}")
+        # print(f"Tool args: {tool_args}")
+        print(f"Justification: {justification}")
+        if tool_args:
+            print(f"Tool args: {tool_args}")
         if next_tool ==  "get_metadata_by_uids":
             resource_type = "sample_metadata"
+            tool_args = (tool_args.uid)
+            print(f"Executing {next_tool} with args: {tool_args}")
+            result = await TOOL_DISPATCH[next_tool](tool_args)
         elif next_tool == "get_uids_by_terms_and_field":
             resource_type = "UIDs"
-            tool_args = (tool_args[0], tool_args[1])
-        
+            tool_args = (tool_args.key_string, tool_args.terms)
+            print(f"Executing {next_tool} with args: {tool_args}")
+            result = await TOOL_DISPATCH[next_tool](*tool_args)
         elif next_tool == "" and len(tool_args) == 0:
             response = {
                 "result": "No tool was selected. Invalid query.",
@@ -64,22 +74,24 @@ async def multi_sample_info(state: ConversationState)->dict|None:
                 "justification": justification
             }
             return response
-        else:
-            result = await TOOL_DISPATCH[next_tool](*tool_args)
-        
+                
         if result and result is not None:
             new_resource = {
                 resource_type: result,
             }
             update_resource(state, new_resource)
             print(f"Updated resource: {state['resources']}")
+
             response = {
-            "result": f"The {next_tool} tool has been executed successfully. The result is: {result}",
+            "result": f"The {next_tool} tool has been executed successfully. The result is: ```json\n{result}\n```",
             "agent": agent,
             "tool": next_tool,
             "new_resource": new_resource,
             "justification": justification
             }
+            msg = [HumanMessage(content = response["result"] + "\n" + response["justification"], name = "multi_sample_info_retriever")]
+            update_messages(state, msg)
+            print(list(response.keys()))
             return response
         else:
             print(f"No result from {next_tool}")
@@ -87,7 +99,7 @@ async def multi_sample_info(state: ConversationState)->dict|None:
         print(f"An error occurred: {e}")
         return None
 
-async def multi_sample_info_retriever_node(state: ConversationState, tools = TOOLSET2, func = multi_sample_info) -> Command[Literal["supervisor"]]:
+async def multi_sample_info_retriever_node(state: ConversationState = INITIAL_STATE, tools = TOOLSET2, func = multi_sample_info) -> Command[Literal["supervisor", "FINISH"]]:
     """
     Asynchronously retrieves sample information using a specified function and updates the conversation state.
 
@@ -112,17 +124,25 @@ async def multi_sample_info_retriever_node(state: ConversationState, tools = TOO
         print("Invoking multi_sample_info_retriever...")
         result = await multi_sample_info_retriever.ainvoke(state)
         print(f"Invocation completed in {time.time() - start_time:.2f} seconds.")
-        if result and result is not None:
-            print(result["messages"][-1].content)
-            updated_messages = state["messages"] + [HumanMessage(content=result["messages"][-1].content, name="multi_sample_info_retriever")]
-        # update_resource(state, result["new_resource"])
+        print(result)
+        # if result and result is not None:
+            # print(result["messages"][-1].content)
+            # message_content = f"{result.get('result', '')}\n\n{result.get('justification', '')}"
+        # message_content = result['result'] + "\n" + result['justification']
+        # print(message_content)
+        updated_messages = state["messages"] + [HumanMessage(content=result["messages"][0].content, name="multi_sample_info_retriever")]
+        # Update resources if the result contains a new_resource key
+        if 'resources' in result:
+            update_resource(state, result['resources'])
+        
+        print(f"Updated resources: {state['resources']}")
         # print(state["resources"])
-            return Command(
-                update={
-                    "messages": updated_messages
-                },
-                goto="supervisor",
-            )
+        return Command(
+            update={
+                "messages": updated_messages
+            },
+            goto="supervisor",
+        )
     except Exception as e:
         messages = f"An error occurred while retrieving sample information: {e}"
         updated_messages = state["messages"] + [HumanMessage(content=messages, name="multi_sample_info_retriever")]
@@ -131,21 +151,81 @@ async def multi_sample_info_retriever_node(state: ConversationState, tools = TOO
             update={
                 "messages": updated_messages
             },
-            goto="supervisor",
+            goto="FINISH",
         )
+    
+# async def multi_sample_info_retriever_node(state: ConversationState = INITIAL_STATE) -> Command[Literal["supervisor"]]:
+#     """
+#     Asynchronously retrieves sample information using a specified function and updates the conversation state.
+
+#     Args:
+#         state (ConversationState): The current state of the conversation.
+#         tools (list): A list of tools to be used by the worker.
+#         func (callable): The function to be executed by the worker.
+
+#     Returns:
+#         Command[Literal["supervisor"]]: A command object with updated messages and resources, directing the flow to the supervisor.
+
+#     Raises:
+#         Exception: If any error occurs during the execution of the worker or invocation.
+#     """
+#     try:
+#         start_time = time.time()
+#         print("Creating worker...")
+
+#         # prompt = state["messages"] + [SystemMessage(content=SYSTEM_MESSAGE)]
+#         # prompt_message = "\n".join([message.content for message in prompt])
+#         multi_sample_info_retriever = create_react_agent(
+#             model=ChatOpenAI(model="gpt-4o-mini", temperature=0),
+#             tools=TOOLSET2,
+#             prompt=(
+#                 "Use the tools at your disposal to retrieve the information requested by the user."
+#                 "Make sure to pass in the correct arguments to the tool selected by carefully reading the user query and the mapped schema terms retrieved by the schema_retriever agent:" 
+#                 f"{state['resources']['db_schema']}."
+#                 "Do not invent or make up terms for the tool arguments. Terms are case-sensitive so use the exact terms from the schema."
+#                 "Your response should include the exact results from the tool call followed by a brief 1-sentence justification of how you used the tool to retrieve the information."
+#                 "If you run into an error, NEVER make up a response or claim to have accomplished the task. Instead, inform the user that you encountered an error and that you are unable to retrieve the information."
+#             )
+#         )
+#         print(f"Worker created in {time.time() - start_time:.2f} seconds.")
+
+#         start_time = time.time()
+#         print("Invoking multi_sample_info_retriever...")
+#         result = await multi_sample_info_retriever.ainvoke(state)
+#         print(f"Invocation completed in {time.time() - start_time:.2f} seconds.")
+#         if result and result is not None:
+#             print(result["messages"][-1].content)
+#             updated_messages = state["messages"] + [HumanMessage(content=result["messages"][-1].content, name="multi_sample_info_retriever")]
+#             # update_resource(state, result["new_resource"])
+#             # print(state["resources"])
+#             return Command(
+#                 update={
+#                     "messages": updated_messages
+#                 },
+#                 goto="supervisor",
+#             )
+#     except Exception as e:
+#         messages = f"An error occurred while retrieving sample information: {e}"
+#         updated_messages = state["messages"] + [HumanMessage(content=messages, name="multi_sample_info_retriever")]
+#         print(messages)
+#         return Command(
+#             update={
+#                 "messages": updated_messages
+#             },
+#             goto="supervisor",
+#         )
 
 if __name__ == "__main__":
     # asyncio.run(basic_sample_info())
     initial_state: ConversationState = {
-        # "messages": [HumanMessage(content="What organ did each of these samples come from: TIS-200901ENG-11,TIS-200901ENG-12,TIS-210322ENG-9?")],
-        "messages": [HumanMessage(content="Please find the UIDs of all samples that are part of the 'CD8 Depletion' study.", name="user"),
-                     HumanMessage(content=""" 
-        pseudo_query: "SELECT json_metadata->>'UID' AS uid FROM seek_production.samples WHERE json_metadata->>'Study' = 'CD8 Depletion'"\n"justification": "The 'seek_production.samples' table contains the 'json_metadata' column, which holds sample-specific data including the 'Genotype' and 'UID'. The query is designed to extract UIDs of samples that are part of the 'CD8 Depletion' study by filtering based on the relevant key in the JSON metadata."
-""", name="schema_mapper")
-                     ],
-        # "messages": [HumanMessage(content="What is the weather today?")],
-        "resources": default_resource_box()
+        "messages": [
+        # HumanMessage(content="Can you please list all the samples associated with the following scientist: 'Patricia Grace'?", name='user'),
+        HumanMessage(content="What is the genotype for the mice with these UIDs: 'MUS-220124FOR-1' and 'MUS-220124FOR-73'?", name = 'user')],
+        # HumanMessage(content='Scientist', name='schema_mapper')],
+        "resources": {'sample_metadata': [], 'protocolURL': '', 'sampleURL': '', 'UIDs': [], 'db_schema': "{'name': 'seek_production.samples', 'columns': [{'name': 'id', 'type': 'INTEGER', 'nullable': False, 'default': None}, {'name': 'title', 'type': 'VARCHAR(255)', 'nullable': True, 'default': None}, {'name': 'sample_type_id', 'type': 'INTEGER', 'nullable': True, 'default': None}, {'name': 'json_metadata', 'type': 'TEXT', 'nullable': True, 'default': None, 'json_keys': ['Catalog#', 'Stain', 'TotalProteinUnits', 'Notes', 'BioSampleAccession', 'CompensationFCSParent', 'TreatmentTimeUnits', 'Link_PrimaryData', 'Checksum_PrimaryType', 'FlowAmount', 'SubstrainReference', 'InstrumentUser', 'Fixative', 'TreatmentTime', 'UID', 'ODFrozen', 'PassageNum', 'Protocol_Treatment', 'CellLineage', 'Treatment1', 'Concentration', 'GramStaining', 'StorageTemperature', 'Treatment', 'Software', 'Protocol_Stimulation', 'QC', 'Treatment1Reference', 'Treatment2Reference', 'ReagentManufacturer', 'Strain', 'QC_notes', 'AntibodyParent', 'Parent', 'FlowAmountUnits', 'Scientist', 'ValidationQuality', 'Instrument', 'Timepoint', 'StorageType', 'TaxonomyID', 'Repository', 'TotalProtein', 'CellLine', 'Treatment2Dose', 'Type', 'Vendor', 'Treatment2', 'Protocol', 'InoculumPrep', 'Treatment1DoseUnits', 'Substrain', 'FMO', 'Stimulation', 'NumAliquot', 'Path_PrimaryData', 'Link_Sequence', 'SourceFacility', 'Genotype', 'Phenotype', 'CollectionTimeUnits', 'Name', 'BiosafetyLevel', 'Morphology', 'StorageSite', 'ValidationMethod', 'Lab', 'Volume', 'Qtag', 'Checksum_PrimaryData', 'ReagentBrand', 'Publish_uri', 'SampleCreationDate', 'ConcentrationUnits', 'Source', 'Fixation', 'Species', 'Organ', 'File_PrimaryData', 'Reagent', 'TreatmentRoute', 'Note', 'TreatmentType', 'OrganDetail', 'Barcode', 'TreatmentDoseTime', 'StorageLocation', 'ReagenCatalogNum', 'StorageTemperatureUnits', 'VolumeUnits', 'TreatmentDose', 'Culture', 'CellCount', 'RepositoryID', 'Reference', 'TreatmentDoseUnits', 'SEEKSubmissionDate', 'ODWavelength', 'Treatment2DoseUnits', 'Treatment1Dose', 'Media', 'CollectionTime']}, {'name': 'uuid', 'type': 'VARCHAR(255)', 'nullable': True, 'default': None}, {'name': 'contributor_id', 'type': 'INTEGER', 'nullable': True, 'default': None}, {'name': 'policy_id', 'type': 'INTEGER', 'nullable': True, 'default': None}, {'name': 'created_at', 'type': 'DATETIME', 'nullable': False, 'default': None}, {'name': 'updated_at', 'type': 'DATETIME', 'nullable': False, 'default': None}, {'name': 'first_letter', 'type': 'VARCHAR(1)', 'nullable': True, 'default': None}, {'name': 'other_creators', 'type': 'TEXT', 'nullable': True, 'default': None}, {'name': 'originating_data_file_id', 'type': 'INTEGER', 'nullable': True, 'default': None}, {'name': 'deleted_contributor', 'type': 'VARCHAR(255)', 'nullable': True, 'default': None}]}"}
     }
-    # results = asyncio.run(basic_sample_info(initial_state))
-    results = asyncio.run(multi_sample_info_retriever_node(initial_state))
+    update_messages(INITIAL_STATE, initial_state["messages"])
+    update_resource(INITIAL_STATE, initial_state["resources"])
+    # results = asyncio.run(multi_sample_info())
+    results = asyncio.run(multi_sample_info_retriever_node())
     print(results)

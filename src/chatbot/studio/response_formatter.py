@@ -52,7 +52,7 @@ def response_formatter_node(state: ConversationState) -> Command[Literal["valida
             update={
                 "messages": updated_messages
             },
-            goto=goto,
+            goto=goto
         )
     except Exception as e:
         print(f"An error occurred in response_formatter_node: {e}")
