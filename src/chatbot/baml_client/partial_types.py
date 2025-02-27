@@ -2,7 +2,7 @@
 #
 #  Welcome to Baml! To use this generated code, please run the following:
 #
-#  $ pip install baml
+#  $ pip install baml-py
 #
 ###############################################################################
 
@@ -37,7 +37,7 @@ class StreamState(BaseModel, Generic[T]):
 class Agent(BaseModel):
     agent: Optional[str] = None
     role: Optional[str] = None
-    toolbox: Dict[str, Optional["ToolMetadata"]]
+    toolbox: Optional[Dict[str, Optional["ToolMetadata"]]] = None
 
 class ChatResponse(BaseModel):
     name: Optional[str] = None
@@ -51,7 +51,7 @@ class Column(BaseModel):
     type: Optional[str] = None
     nullable: Optional[bool] = None
     default: Optional[str] = None
-    json_keys: List[Optional[str]]
+    json_keys: Optional[List[str]] = None
 
 class DataSummarizer(BaseModel):
     summary: Optional[str] = None
@@ -145,19 +145,19 @@ class Navigator(BaseModel):
 class Payload(BaseModel):
     system_message: Optional[str] = None
     user_query: Optional[str] = None
-    aggregatedMessages: List[Optional[str]]
+    aggregatedMessages: Optional[List[str]] = None
     resource: Optional["ResourceBox"] = None
 
 class QueryParser(BaseModel):
     parsed_query: Optional[str] = None
-    tasks: List[Optional[str]]
+    tasks: List[str]
     justification: Optional[str] = None
 
 class ResourceBox(BaseModel):
-    sample_metadata: List["Metadata"]
+    sample_metadata: Optional[List["Metadata"]] = None
     protocolUrl: Optional[str] = None
     sampleUrl: Optional[str] = None
-    UIDs: List[Optional[str]]
+    UIDs: Optional[List[str]] = None
     db_schema: Optional[Union[Optional["Schema"], Optional[str]]] = None
 
 class Responder(BaseModel):
@@ -189,8 +189,8 @@ class Table(BaseModel):
 
 class ToolArgs(BaseModel):
     key_string: Optional[str] = None
-    terms: List[Optional[str]]
-    uid: Optional[Union[Optional[str], List[Optional[str]]]] = None
+    terms: Optional[List[str]] = None
+    uid: Optional[Union[Optional[str], Optional[List[str]]]] = None
 
 class ToolMetadata(BaseModel):
     doc: Optional[str] = None
@@ -202,3 +202,4 @@ class Validator(BaseModel):
     Clarifying_Question: Optional[str] = None
     justification: Optional[str] = None
     response: Optional[str] = None
+    error: Optional[str] = None

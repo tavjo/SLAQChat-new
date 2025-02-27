@@ -132,6 +132,7 @@ class Validator {
     Clarifying_Question string? @description("A clarifying question to the user if Valid is false")
     justification string @description("The justification for your response")
     response string? @description("same as inputMessage")
+    error string? @description("The error message if the response contains an error")
 }
 
 class ToolMetadata {

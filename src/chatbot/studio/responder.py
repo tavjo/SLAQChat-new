@@ -18,7 +18,7 @@ from src.chatbot.studio.prompts import (
     WORK_GROUP_B
 )
 
-def responder_node(state: ConversationState) -> Command[Literal["data_summarizer", "response_formatter", "FINISH"]]:
+def responder_node(state: ConversationState) -> Command[Literal["data_summarizer", "response_formatter", "validator"]]:
     """
     Processes the current conversation state to determine the next worker and update the conversation flow.
 
@@ -26,7 +26,7 @@ def responder_node(state: ConversationState) -> Command[Literal["data_summarizer
         state (ConversationState): The current state of the conversation.
 
     Returns:
-        Command[Literal["data_summarizer", "response_formatter", "FINISH"]]: A command object with updated messages, resources, and available workers, directing the flow to the next worker.
+        Command[Literal["data_summarizer", "response_formatter"]]: A command object with updated messages, resources, and available workers, directing the flow to the next worker.
 
     Raises:
         Exception: If any error occurs during the response processing.
@@ -53,11 +53,6 @@ def responder_node(state: ConversationState) -> Command[Literal["data_summarizer
         available_workers = [i for i in available_workers if i["agent"] != goto]
         update_available_workers(state, available_workers)
         print(f"Remaining Available Workers: {state['available_workers']}")
-
-        # if goto == "validator":
-        #     print(state["messages"][-1].content)
-        #     updated_messages = state["messages"] + [HumanMessage(content=response.justification, name="responder")] + [HumanMessage(content=state["messages"][-1].content, name="responder")]
-        # else:
         if state["messages"][-1].name == "response_formatter":
             updated_messages = state["messages"] + [HumanMessage(content=response.justification, name="responder")] + [HumanMessage(content=state["messages"][-1].content, name="responder")]
         else:
@@ -79,7 +74,7 @@ def responder_node(state: ConversationState) -> Command[Literal["data_summarizer
             update={
                 "messages": updated_messages
             },
-            goto="FINISH"
+            goto="validator"
         )
 
 
@@ -111,5 +106,4 @@ if __name__ == "__main__":
             {'agent': 'data_summarizer', 'role': '1.(optional) Summarize conversation and data if more than 8 elements in aggregatedMessages', 'toolbox': None, 'tools_description': None}, {'agent': 'validator', 'role': '3. Validate the response', 'toolbox': None, 'tools_description': None}, {'agent': 'FINISH', 'role': '4.Finish the conversation', 'toolbox': None, 'tools_description': None}
         ]
     }
-    # responder_node(initial_state)
     responder_node(new_state)

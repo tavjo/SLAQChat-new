@@ -2,7 +2,7 @@
 #
 #  Welcome to Baml! To use this generated code, please run the following:
 #
-#  $ pip install baml
+#  $ pip install baml-py
 #
 ###############################################################################
 
@@ -16,7 +16,8 @@
 import baml_py
 from enum import Enum
 from pydantic import BaseModel, ConfigDict
-from typing import Dict, Generic, List, Literal, Optional, TypeVar, Union, TypeAlias
+from typing_extensions import TypeAlias
+from typing import Dict, Generic, List, Literal, Optional, TypeVar, Union
 
 
 T = TypeVar('T')
@@ -163,7 +164,7 @@ class ResourceBox(BaseModel):
     protocolUrl: Optional[str] = None
     sampleUrl: Optional[str] = None
     UIDs: Optional[List[str]] = None
-    db_schema: Union[Optional["Schema"], Optional[str]]
+    db_schema: Union[Optional["Schema"], Optional[str]] = None
 
 class Responder(BaseModel):
     Next_worker: "Agent"
@@ -195,7 +196,7 @@ class Table(BaseModel):
 class ToolArgs(BaseModel):
     key_string: Optional[str] = None
     terms: Optional[List[str]] = None
-    uid: Union[Optional[str], Optional[List[str]]]
+    uid: Union[Optional[str], Optional[List[str]]] = None
 
 class ToolMetadata(BaseModel):
     doc: str
@@ -207,3 +208,4 @@ class Validator(BaseModel):
     Clarifying_Question: Optional[str] = None
     justification: str
     response: Optional[str] = None
+    error: Optional[str] = None

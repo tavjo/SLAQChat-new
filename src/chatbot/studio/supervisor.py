@@ -14,12 +14,11 @@ from src.chatbot.studio.models import ConversationState
 from src.chatbot.studio.helpers import get_resource, default_resource_box, get_available_workers, update_available_workers, update_messages
 
 from src.chatbot.studio.prompts import (
-    SYSTEM_MESSAGE,
     WORK_GROUP_A,
     INITIAL_STATE
 )
 
-def supervisor_node(state: ConversationState) -> Command[Literal["basic_sample_info_retriever","multi_sample_info_retriever", "responder", "FINISH"]]:
+def supervisor_node(state: ConversationState) -> Command[Literal["basic_sample_info_retriever","multi_sample_info_retriever", "responder", "validator"]]:
     """
     Supervises the current conversation state to determine the next worker and update the conversation flow.
 
@@ -27,7 +26,7 @@ def supervisor_node(state: ConversationState) -> Command[Literal["basic_sample_i
         state (ConversationState): The current state of the conversation.
 
     Returns:
-        Command[Literal["basic_sample_info_retriever", "responder"]]: A command object with updated messages, resources, and available workers, directing the flow to the next worker.
+        Command[Literal["basic_sample_info_retriever","multi_sample_info_retriever", "responder"]]: A command object with updated messages, resources, and available workers, directing the flow to the next worker.
 
     Raises:
         Exception: If any error occurs during the supervision process.
@@ -76,7 +75,7 @@ def supervisor_node(state: ConversationState) -> Command[Literal["basic_sample_i
             update={
                 "messages": updated_messages,
             },
-            goto="FINISH"
+            goto="validator"
         )
 
 

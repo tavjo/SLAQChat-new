@@ -51,9 +51,6 @@ async def multi_sample_info(state: ConversationState = INITIAL_STATE)->dict|None
     try:
         # Call the async navigator handler
         next_tool, tool_args, justification = await async_navigator_handler(AGENT, state)
-
-        # print(f"Next tool: {next_tool}")
-        # print(f"Tool args: {tool_args}")
         print(f"Justification: {justification}")
         if tool_args:
             print(f"Tool args: {tool_args}")
@@ -99,7 +96,7 @@ async def multi_sample_info(state: ConversationState = INITIAL_STATE)->dict|None
         print(f"An error occurred: {e}")
         return None
 
-async def multi_sample_info_retriever_node(state: ConversationState = INITIAL_STATE, tools = TOOLSET2, func = multi_sample_info) -> Command[Literal["supervisor", "FINISH"]]:
+async def multi_sample_info_retriever_node(state: ConversationState = INITIAL_STATE, tools = TOOLSET2, func = multi_sample_info) -> Command[Literal["supervisor", "validator"]]:
     """
     Asynchronously retrieves sample information using a specified function and updates the conversation state.
 
@@ -125,18 +122,12 @@ async def multi_sample_info_retriever_node(state: ConversationState = INITIAL_ST
         result = await multi_sample_info_retriever.ainvoke(state)
         print(f"Invocation completed in {time.time() - start_time:.2f} seconds.")
         print(result)
-        # if result and result is not None:
-            # print(result["messages"][-1].content)
-            # message_content = f"{result.get('result', '')}\n\n{result.get('justification', '')}"
-        # message_content = result['result'] + "\n" + result['justification']
-        # print(message_content)
         updated_messages = state["messages"] + [HumanMessage(content=result["messages"][0].content, name="multi_sample_info_retriever")]
         # Update resources if the result contains a new_resource key
         if 'resources' in result:
             update_resource(state, result['resources'])
         
         print(f"Updated resources: {state['resources']}")
-        # print(state["resources"])
         return Command(
             update={
                 "messages": updated_messages
@@ -151,69 +142,9 @@ async def multi_sample_info_retriever_node(state: ConversationState = INITIAL_ST
             update={
                 "messages": updated_messages
             },
-            goto="FINISH",
+            goto="validator",
         )
     
-# async def multi_sample_info_retriever_node(state: ConversationState = INITIAL_STATE) -> Command[Literal["supervisor"]]:
-#     """
-#     Asynchronously retrieves sample information using a specified function and updates the conversation state.
-
-#     Args:
-#         state (ConversationState): The current state of the conversation.
-#         tools (list): A list of tools to be used by the worker.
-#         func (callable): The function to be executed by the worker.
-
-#     Returns:
-#         Command[Literal["supervisor"]]: A command object with updated messages and resources, directing the flow to the supervisor.
-
-#     Raises:
-#         Exception: If any error occurs during the execution of the worker or invocation.
-#     """
-#     try:
-#         start_time = time.time()
-#         print("Creating worker...")
-
-#         # prompt = state["messages"] + [SystemMessage(content=SYSTEM_MESSAGE)]
-#         # prompt_message = "\n".join([message.content for message in prompt])
-#         multi_sample_info_retriever = create_react_agent(
-#             model=ChatOpenAI(model="gpt-4o-mini", temperature=0),
-#             tools=TOOLSET2,
-#             prompt=(
-#                 "Use the tools at your disposal to retrieve the information requested by the user."
-#                 "Make sure to pass in the correct arguments to the tool selected by carefully reading the user query and the mapped schema terms retrieved by the schema_retriever agent:" 
-#                 f"{state['resources']['db_schema']}."
-#                 "Do not invent or make up terms for the tool arguments. Terms are case-sensitive so use the exact terms from the schema."
-#                 "Your response should include the exact results from the tool call followed by a brief 1-sentence justification of how you used the tool to retrieve the information."
-#                 "If you run into an error, NEVER make up a response or claim to have accomplished the task. Instead, inform the user that you encountered an error and that you are unable to retrieve the information."
-#             )
-#         )
-#         print(f"Worker created in {time.time() - start_time:.2f} seconds.")
-
-#         start_time = time.time()
-#         print("Invoking multi_sample_info_retriever...")
-#         result = await multi_sample_info_retriever.ainvoke(state)
-#         print(f"Invocation completed in {time.time() - start_time:.2f} seconds.")
-#         if result and result is not None:
-#             print(result["messages"][-1].content)
-#             updated_messages = state["messages"] + [HumanMessage(content=result["messages"][-1].content, name="multi_sample_info_retriever")]
-#             # update_resource(state, result["new_resource"])
-#             # print(state["resources"])
-#             return Command(
-#                 update={
-#                     "messages": updated_messages
-#                 },
-#                 goto="supervisor",
-#             )
-#     except Exception as e:
-#         messages = f"An error occurred while retrieving sample information: {e}"
-#         updated_messages = state["messages"] + [HumanMessage(content=messages, name="multi_sample_info_retriever")]
-#         print(messages)
-#         return Command(
-#             update={
-#                 "messages": updated_messages
-#             },
-#             goto="supervisor",
-#         )
 
 if __name__ == "__main__":
     # asyncio.run(basic_sample_info())
@@ -226,6 +157,5 @@ if __name__ == "__main__":
     }
     update_messages(INITIAL_STATE, initial_state["messages"])
     update_resource(INITIAL_STATE, initial_state["resources"])
-    # results = asyncio.run(multi_sample_info())
     results = asyncio.run(multi_sample_info_retriever_node())
     print(results)

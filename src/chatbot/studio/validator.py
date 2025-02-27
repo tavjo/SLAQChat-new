@@ -13,8 +13,6 @@ from src.chatbot.baml_client import b as baml
 from src.chatbot.studio.models import ConversationState
 from src.chatbot.studio.helpers import get_resource, update_messages
 
-# from src.chatbot.studio.prompts import (
-# )
 
 def validator_node(state: ConversationState) -> Command[Literal["FINISH"]]:
     """
@@ -47,8 +45,10 @@ def validator_node(state: ConversationState) -> Command[Literal["FINISH"]]:
         if response.Valid:
             # new_aggregate = str(response.Valid) + "\n" + response.justification
             new_aggregate = state["messages"][-1].content
-        else:
+        elif response.Clarifying_Question:
             new_aggregate = response.Clarifying_Question
+        else:
+            new_aggregate = response.error
         print(new_aggregate)
 
         updated_messages = [HumanMessage(content=new_aggregate, name="validator")]
@@ -62,6 +62,9 @@ def validator_node(state: ConversationState) -> Command[Literal["FINISH"]]:
     except Exception as e:
         print(f"An error occurred in validator_node: {e}")
         return Command(
+            update={
+                "messages": state["messages"] + [HumanMessage(content=f"An error occurred in while validating the response: {e}", name="validator")]
+            },
             goto="FINISH"
         )
 

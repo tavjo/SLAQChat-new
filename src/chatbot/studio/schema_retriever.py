@@ -18,7 +18,6 @@ from langchain_openai import ChatOpenAI
 import asyncio
 
 from src.chatbot.studio.prompts import (
-    # SYSTEM_MESSAGE,
     INITIAL_STATE
 )
 
@@ -90,7 +89,7 @@ from src.chatbot.studio.prompts import (
 #             goto="FINISH",
 #         )
 
-async def schema_retriever_node(state: ConversationState = INITIAL_STATE) -> Command[Literal["supervisor", "FINISH"]]:
+async def schema_retriever_node(state: ConversationState = INITIAL_STATE) -> Command[Literal["supervisor", "validator"]]:
     """
     Validates the current conversation state and updates the conversation flow.
 
@@ -157,7 +156,7 @@ async def schema_retriever_node(state: ConversationState = INITIAL_STATE) -> Com
             update={
                 "messages": state["messages"] + [HumanMessage(content=f"An error occurred while mapping query to schema: {e}", name="schema_mapper")]
             },
-            goto="FINISH"
+            goto="validator"
         )
 
 # Example usage:

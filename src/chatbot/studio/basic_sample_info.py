@@ -15,11 +15,9 @@ from src.chatbot.studio.helpers import async_navigator_handler, update_resource,
 import asyncio
 from langchain_core.messages import HumanMessage, SystemMessage
 from src.chatbot.studio.models import ConversationState
-from src.chatbot.studio.helpers import create_worker#, create_agent
+from src.chatbot.studio.helpers import create_worker
 from langgraph.types import Command
 from typing_extensions import Literal
-# from langchain_openai import ChatOpenAI
-# from langgraph.prebuilt import create_react_agent
 from dotenv import load_dotenv
 
 load_dotenv()
@@ -51,11 +49,6 @@ async def basic_sample_info(state: ConversationState = INITIAL_STATE)->dict|None
     try:
         # Call the async navigator handler
         next_tool, tool_args, justification = await async_navigator_handler(AGENT, state)
-
-        # print(f"Next tool: {next_tool}")
-        # print(f"Tool args: {tool_args[0]}")
-
-        # uid = tool_args[0] if isinstance(tool_args, list) else tool_args
         uid = tool_args.uid if isinstance(tool_args.uid, str) else tool_args.uid[0]
 
         if next_tool == "retrieve_sample_info":
@@ -103,7 +96,7 @@ async def basic_sample_info(state: ConversationState = INITIAL_STATE)->dict|None
         print(f"An error occurred: {e}")
         return None
 
-async def basic_sample_info_retriever_node(state: ConversationState = INITIAL_STATE, tools = TOOLSET1, func = basic_sample_info) -> Command[Literal["supervisor", "FINISH"]]:
+async def basic_sample_info_retriever_node(state: ConversationState = INITIAL_STATE, tools = TOOLSET1, func = basic_sample_info) -> Command[Literal["supervisor", "validator"]]:
     """
     Asynchronously retrieves sample information using a specified function and updates the conversation state.
 
@@ -148,63 +141,8 @@ async def basic_sample_info_retriever_node(state: ConversationState = INITIAL_ST
             update={
                 "messages": updated_messages
             },
-            goto="FINISH",
+            goto="validator",
         )
-
-# async def basic_sample_info_retriever_node(state: ConversationState, tools = TOOLSET1) -> Command[Literal["supervisor"]]:
-#     """
-#     Asynchronously retrieves sample information using a specified function and updates the conversation state.
-
-#     Args:
-#         state (ConversationState): The current state of the conversation.
-#         tools (list): A list of tools to be used by the worker.
-#         func (callable): The function to be executed by the worker.
-
-#     Returns:
-#         Command[Literal["supervisor"]]: A command object with updated messages and resources, directing the flow to the supervisor.
-
-#     Raises:
-#         Exception: If any error occurs during the execution of the worker or invocation.
-#     """
-#     try:
-#         start_time = time.time()
-#         print("Creating worker...")
-#         # basic_sample_info_retriever = await create_worker(tools,func)
-#         # prompt = state["messages"] + [SystemMessage(content=SYSTEM_MESSAGE)]
-#         # prompt_message = "\n".join([message.content for message in prompt])
-#         basic_sample_info_retriever = create_react_agent(
-#             model=ChatOpenAI(model="gpt-4o-mini", temperature=0),
-#             tools=TOOLSET1,
-#             prompt=SYSTEM_MESSAGE   
-#         )
-#         print(f"Worker created in {time.time() - start_time:.2f} seconds.")
-
-#         start_time = time.time()
-#         print("Invoking basic_sample_info_retriever...")
-#         result = await basic_sample_info_retriever.ainvoke(state)
-#         print(f"Invocation completed in {time.time() - start_time:.2f} seconds.")
-#         print(result["messages"][-1].content)
-#         # update_resource(state, result["new_resource"])
-#         # print(state["resources"])
-
-#         updated_messages = state["messages"] + [HumanMessage(content=result["messages"][-1].content, name="basic_sample_info_retriever")]
-#         return Command(
-#             update={
-#                 "messages": updated_messages,
-#                 "resources": state["resources"]
-#             },
-#             goto="supervisor",
-#         )
-#     except Exception as e:
-#         messages = f"An error occurred while retrieving sample information: {e}"
-#         updated_messages = state["messages"] + [HumanMessage(content=messages, name="basic_sample_info_retriever")]
-#         print(messages)
-#         return Command(
-#             update={
-#                 "messages": updated_messages
-#             },
-#             goto="supervisor",
-#         )
 
 if __name__ == "__main__":
     # asyncio.run(basic_sample_info())
@@ -213,6 +151,5 @@ if __name__ == "__main__":
         # "messages": [HumanMessage(content="What is the weather today?")],
         "resources": default_resource_box(),
     }
-    # results = asyncio.run(basic_sample_info(initial_state))
     results = asyncio.run(basic_sample_info_retriever_node(initial_state))
     print(results)

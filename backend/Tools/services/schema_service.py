@@ -43,8 +43,8 @@ async def extract_relevant_schema(database_name: str = 'DB_NAME', table_names: l
         schema = get_cached_database_schema()
         schema_json = json.dumps(schema, indent=2)
         # save schema to file
-        with open('db_schema.json', 'w') as f:
-            f.write(schema_json)
+        # with open('db_schema.json', 'w') as f:
+        #     f.write(schema_json)
         schema = json.loads(schema_json)
         schema = schema["tables"]
 

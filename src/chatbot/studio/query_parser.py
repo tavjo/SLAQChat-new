@@ -19,7 +19,7 @@ from src.chatbot.studio.prompts import (
     INITIAL_STATE
 )
 
-def query_parser_node(state: ConversationState = INITIAL_STATE) -> Command[Literal["schema_mapper", "FINISH"]]:
+def query_parser_node(state: ConversationState = INITIAL_STATE) -> Command[Literal["schema_mapper", "validator"]]:
     """
     Receives a user query and breaks it down into a list of queries.
 
@@ -64,15 +64,12 @@ def query_parser_node(state: ConversationState = INITIAL_STATE) -> Command[Liter
             update={
                 "messages": updated_messages
             },
-            goto="FINISH"
+            goto="validator"
         )
 
 
 # Example usage:
 if __name__ == "__main__":
-    # initial_state: ConversationState = {
-    #     "messages": [HumanMessage(content="Can you tell me more about the sample with UID PAV-220630FLY-1031?")]
-    # }
     messages = [HumanMessage(content="Can you tell me more about the sample with UID PAV-220630FLY-1031?")]
     update_messages(INITIAL_STATE, messages)
     query_parser_node()

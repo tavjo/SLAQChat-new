@@ -21,10 +21,11 @@ function ValidateResponse(inputMessage: Payload) -> Validator {
     5. Address your clarifying questions to the **user** not to previous workers
     6. Don't assume an information is wrong, only address gaps in the information provided based on the user's query
 
-    If invalid, provide a specific clarifying question addressing the gap.
+    If invalid, you should either:
+      1. Provide a specific clarifying question addressing the gap, OR
+      2. Summarize the error for the user in a polite and friendly manner if the response is invalid because an error occurred at any point in the previous workers.
     {{ inputMessage }}
     {{ ctx.output_format }}
-
   "#
 }
 

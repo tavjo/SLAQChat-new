@@ -17,7 +17,7 @@ from src.chatbot.studio.prompts import (
     INITIAL_STATE
 )
 
-def conversationalist_node(state: ConversationState) -> Command[Literal["schema_retriever","FINISH"]]:
+def conversationalist_node(state: ConversationState) -> Command[Literal["schema_retriever", "validator", "FINISH"]]:
     """
     Either responds directly to the user or directs the flow to the schema_retriever.
 
@@ -65,7 +65,7 @@ def conversationalist_node(state: ConversationState) -> Command[Literal["schema_
             update={
                 "messages": state["messages"]
             },
-            goto="FINISH",
+            goto="validator",
         )
 
 # Example usage:

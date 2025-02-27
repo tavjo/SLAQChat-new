@@ -1,12 +1,12 @@
 # Semantic LLM-aided Querying (SLAQChat)
 
-This is a chatbot that uses an RDF-based semantic layer to transform user questions into database queries.
+This is multi-agent chatbot application that transforms user questions into database queries.
 
 This is an extension feature of NExtSEEK, a platform for active data management. For more information, please visit the [NExtSEEK website](https://nextseek.mit.edu/).
 
 You can find the source code for NExtSEEK [here](https://github.com/BMCBCC/NExtSEEK). 
 
-## Current Agent Architecture
+## Agent Architecture (in progress)
 
 This chatbot is built using LangGraph, a framework for building multi-agent systems. Currently, the chatbot is designed to answer questions about the samples housed in the NExtSEEK database.
 
@@ -23,7 +23,7 @@ This chatbot is designed to be modular and extensible to support increasingly mo
 
 This architecture is represented graphically in the following figure:
 
-![alt text](multiagents_architecture2.png)
+![alt text](multiagents_architecture3.png)
 
 ## Project Structure
 

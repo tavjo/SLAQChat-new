@@ -110,14 +110,6 @@ class ResourceBox(TypedDict):
     sampleURL: Optional[str]
     UIDs: Optional[List[str]]  # You can omit '= None' in TypedDict
 
-# class MessageState(TypedDict):
-#     system_message: str
-#     user_query: str
-#     aggregatedMessages: list[str]
-#     available_workers: list[str]
-#     resource: ResourceBox
-
-
 
 class AgentState(TypedDict):
     """The state of the agent."""
