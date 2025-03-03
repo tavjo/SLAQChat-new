@@ -1,0 +1,4 @@
+User-agent: *
+Disallow: /~gitbook/
+Allow: /
+Sitemap: https://koch-institute-mit.gitbook.io/kits/sitemap.xml

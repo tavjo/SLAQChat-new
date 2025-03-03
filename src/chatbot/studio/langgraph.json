@@ -1,7 +1,7 @@
 {
   "dockerfile_lines": [],
   "graphs": {
-    "agent": "./sample_retriever.py:graph"
+    "agent": "./sample_retriever.py:sampleRetrieverGraph"
   },
   "env": "./.env",
   "python_version": "3.12",
