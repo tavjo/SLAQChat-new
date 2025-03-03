@@ -17,15 +17,15 @@ from src.chatbot.studio.prompts import (
     INITIAL_STATE
 )
 
-def conversationalist_node(state: ConversationState) -> Command[Literal["schema_retriever", "validator", "FINISH"]]:
+def conversationalist_node(state: ConversationState) -> Command[Literal["supervisor", "validator", "FINISH"]]:
     """
-    Either responds directly to the user or directs the flow to the schema_retriever.
+    Either responds directly to the user or directs the flow to the supervisor.
 
     Args:
         state (ConversationState): The current state of the conversation.
 
     Returns:
-        Command[Literal["FINISH", "schema_retriever"]]: A command object with updated messages, directing the flow to FINISH or the schema_retriever.
+        Command[Literal["validator","FINISH", "supervisor"]]: A command object with updated messages, directing the flow to the next agent.
 
     Raises:
         Exception: If any error occurs during the validation process.
@@ -43,16 +43,20 @@ def conversationalist_node(state: ConversationState) -> Command[Literal["schema_
         response = baml.Conversationalist(payload["user_query"])
         print(f"Response obtained in {time.time() - start_time:.2f} seconds.")
 
+        goto = None
+
         print(f"Agent: {response.name}\nJustification: {response.justification}")
         if response.retrieve_info:
-            goto = "schema_retriever"
+            goto = "supervisor"
             new_aggregate = response.user_query
             updated_messages = [HumanMessage(content=new_aggregate, name=response.name)]
         else:
             goto = "FINISH"
             new_aggregate = response.response
             updated_messages = state["messages"] + [HumanMessage(content=new_aggregate, name=response.name)]
+        
         update_messages(state, updated_messages)
+        print(goto)
         return Command(
             update={
                 "messages": updated_messages
@@ -70,6 +74,6 @@ def conversationalist_node(state: ConversationState) -> Command[Literal["schema_
 
 # Example usage:
 if __name__ == "__main__":
-    user_message = [HumanMessage(content = "Hi! Which country has the best food?")]
+    user_message = [HumanMessage(content = "Hi! Can you give me some information about this sample: NHP-220630FLY-2?")]
     update_messages(INITIAL_STATE, user_message)
     conversationalist_node(INITIAL_STATE)

@@ -18,7 +18,7 @@ function ValidateResponse(inputMessage: Payload) -> Validator {
     2. Verify any resources or links mentioned are present in the ResourceBox
     3. Ensure no information is fabricated
     4. Confirm technical accuracy and format consistency
-    5. Address your clarifying questions to the **user** not to previous workers
+    5. Important: Always address your clarifying questions to the **user**.
     6. Don't assume an information is wrong, only address gaps in the information provided based on the user's query
 
     If invalid, you should either:

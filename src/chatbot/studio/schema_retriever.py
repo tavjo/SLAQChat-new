@@ -89,7 +89,7 @@ from src.chatbot.studio.prompts import (
 #             goto="FINISH",
 #         )
 
-async def schema_retriever_node(state: ConversationState = INITIAL_STATE) -> Command[Literal["supervisor", "validator"]]:
+async def schema_retriever_node(state: ConversationState = INITIAL_STATE) -> Command[Literal["multi_sample_info_retriever", "validator"]]:
     """
     Validates the current conversation state and updates the conversation flow.
 
@@ -97,17 +97,17 @@ async def schema_retriever_node(state: ConversationState = INITIAL_STATE) -> Com
         state (ConversationState): The current state of the conversation.
 
     Returns:
-        Command[Literal["supervisor"]]: A command object with updated messages, directing the flow to the supervisor.
+        Command[Literal["multi_sample_info_retriever", "validator"]]: A command object with updated messages, directing the flow to the next agent.
 
     Raises:
-        Exception: If any error occurs during the validation process.
+        Exception: If any error occurs during the schema retrieval process.
     """
     try:
         start_time = time.time()
         print("Creating schema retriever...")
         print(len(state["messages"]))
-        print(state["messages"][-1].content)
-        user_query = state["messages"][-1].content
+        print(state["messages"][1].content)
+        user_query = state["messages"][1].content
         llm = ChatOpenAI(model="gpt-4o-mini", temperature=0)
         db_schema = await extract_relevant_schema()
         # schema_retriever = create_react_agent(
@@ -137,11 +137,10 @@ async def schema_retriever_node(state: ConversationState = INITIAL_STATE) -> Com
                 "db_schema": result.schema_map
             }
             update_resource(state, new_resource)
-            # print(result["messages"][-1].content)
             updated_messages = [HumanMessage(content=user_query, name="user")] + [HumanMessage(content= "The relevant database keys are: " + "\n".join(result.relevant_keys), name="schema_mapper")]
             update_messages(state, updated_messages)
             print(state["messages"])
-        goto = "supervisor"
+        goto = "multi_sample_info_retriever"
         print(f"Mapping completed in {time.time() - start_time:.2f} seconds.")
         print(state["resources"])
         return Command(

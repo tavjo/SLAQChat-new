@@ -18,7 +18,7 @@ from src.chatbot.studio.prompts import (
     INITIAL_STATE
 )
 
-def supervisor_node(state: ConversationState) -> Command[Literal["basic_sample_info_retriever","multi_sample_info_retriever", "responder", "validator"]]:
+def supervisor_node(state: ConversationState) -> Command[Literal["basic_sample_info_retriever","schema_retriever","multi_sample_info_retriever", "responder", "validator"]]:
     """
     Supervises the current conversation state to determine the next worker and update the conversation flow.
 
@@ -26,7 +26,7 @@ def supervisor_node(state: ConversationState) -> Command[Literal["basic_sample_i
         state (ConversationState): The current state of the conversation.
 
     Returns:
-        Command[Literal["basic_sample_info_retriever","multi_sample_info_retriever", "responder"]]: A command object with updated messages, resources, and available workers, directing the flow to the next worker.
+        Command[Literal["basic_sample_info_retriever","schema_retriever","multi_sample_info_retriever", "responder", "validator"]]: A command object with updated messages, resources, and available workers, directing the flow to the next worker.
 
     Raises:
         Exception: If any error occurs during the supervision process.
@@ -39,7 +39,7 @@ def supervisor_node(state: ConversationState) -> Command[Literal["basic_sample_i
 
         payload = {
             "system_message": state["messages"][0].content,
-            "user_query": state["messages"][1].content,
+            "user_query": state["messages"][-1].content,
             "aggregatedMessages": [msg.content for msg in state["messages"]],
             "resource": get_resource(state)
         }
@@ -56,6 +56,8 @@ def supervisor_node(state: ConversationState) -> Command[Literal["basic_sample_i
 
         available_workers = [i for i in available_workers if i["agent"] != goto]
         update_available_workers(state, available_workers)
+        if goto == "multi_sample_info_retriever":
+            goto = "schema_retriever"
         print(f"Remaining Available Workers: {state['available_workers']}")
 
         # Merge the new message with the existing ones
