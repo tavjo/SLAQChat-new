@@ -5,7 +5,7 @@ client<llm> MyClient {
   options {
     api_key env.OPENAI_API_KEY
     model "gpt-4o-mini"
-    temperature 0
+    temperature 0.2
   }
 }
 

@@ -11,7 +11,7 @@ client<llm> ConversationalistClient {
   options {
     api_key env.OPENAI_API_KEY
     model "gpt-4o"
-    temperature 0
+    temperature 0.4
   }
 }
 

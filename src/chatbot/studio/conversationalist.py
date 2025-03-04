@@ -17,7 +17,7 @@ from src.chatbot.studio.prompts import (
     INITIAL_STATE
 )
 
-def conversationalist_node(state: ConversationState) -> Command[Literal["supervisor", "validator", "FINISH"]]:
+def conversationalist_node(state: ConversationState) -> Command[Literal["query_parser", "validator", "FINISH"]]:
     """
     Either responds directly to the user or directs the flow to the supervisor.
 
@@ -25,10 +25,10 @@ def conversationalist_node(state: ConversationState) -> Command[Literal["supervi
         state (ConversationState): The current state of the conversation.
 
     Returns:
-        Command[Literal["validator","FINISH", "supervisor"]]: A command object with updated messages, directing the flow to the next agent.
+        Command[Literal["validator","FINISH","query_parser"]]: A command object with updated messages, directing the flow to the next agent.
 
     Raises:
-        Exception: If any error occurs during the validation process.
+        Exception: If any error occurs during the conversation.
     """
     try:
         payload = {
@@ -47,9 +47,9 @@ def conversationalist_node(state: ConversationState) -> Command[Literal["supervi
 
         print(f"Agent: {response.name}\nJustification: {response.justification}")
         if response.retrieve_info:
-            goto = "supervisor"
+            goto = "query_parser"
             new_aggregate = response.user_query
-            updated_messages = [HumanMessage(content=new_aggregate, name=response.name)]
+            updated_messages = [HumanMessage(content=new_aggregate, name="user")]
         else:
             goto = "FINISH"
             new_aggregate = response.response

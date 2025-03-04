@@ -138,9 +138,17 @@ class Metadata(BaseModel):
 
 class Navigator(BaseModel):
     agent: Optional["Agent"] = None
+    explanation: Optional[str] = None
     next_tool: Optional[str] = None
     tool_args: Optional["ToolArgs"] = None
     justification: Optional[str] = None
+
+class ParsedQuery(BaseModel):
+    uid: Optional[Union[Optional[List[str]], str]] = None
+    sampletype: Optional[Union[Optional[List[str]], str]] = None
+    assay: Optional[Union[Optional[List[str]], str]] = None
+    attribute: Optional[Union[Optional[List[str]], str]] = None
+    terms: Optional[Union[Optional[List[str]], str]] = None
 
 class Payload(BaseModel):
     system_message: Optional[str] = None
@@ -149,16 +157,17 @@ class Payload(BaseModel):
     resource: Optional["ResourceBox"] = None
 
 class QueryParser(BaseModel):
-    parsed_query: Optional[str] = None
-    tasks: List[str]
+    parsed_query: Optional["ParsedQuery"] = None
+    explanation: Optional[str] = None
     justification: Optional[str] = None
 
 class ResourceBox(BaseModel):
-    sample_metadata: Optional[List["Metadata"]] = None
+    sample_metadata: Optional[Union[Optional[List["Metadata"]], str]] = None
     protocolUrl: Optional[str] = None
     sampleUrl: Optional[str] = None
     UIDs: Optional[List[str]] = None
     db_schema: Optional[Union[Optional["Schema"], Optional[str]]] = None
+    parsed_query: Optional["ParsedQuery"] = None
 
 class Responder(BaseModel):
     Next_worker: Optional["Agent"] = None

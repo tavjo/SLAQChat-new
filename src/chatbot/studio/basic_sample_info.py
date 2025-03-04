@@ -48,7 +48,7 @@ async def basic_sample_info(state: ConversationState = INITIAL_STATE)->dict|None
     }
     try:
         # Call the async navigator handler
-        next_tool, tool_args, justification = await async_navigator_handler(AGENT, state)
+        next_tool, tool_args, justification, explanation = await async_navigator_handler(AGENT, state)
         uid = tool_args.uid if isinstance(tool_args.uid, str) else tool_args.uid[0]
 
         if next_tool == "retrieve_sample_info":
@@ -66,7 +66,8 @@ async def basic_sample_info(state: ConversationState = INITIAL_STATE)->dict|None
             response = {
                 "result": "No tool was selected. Invalid query.",
                 "agent": agent,
-                "justification": justification
+                "justification": justification,
+                "explanation": explanation
             }
             return response
         
@@ -87,7 +88,8 @@ async def basic_sample_info(state: ConversationState = INITIAL_STATE)->dict|None
             "agent": agent,
             "tool": next_tool,
             "new_resource": new_resource,
-            "justification": justification
+            "justification": justification,
+            "explanation": explanation
         }
         
         return response

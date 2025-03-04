@@ -108,13 +108,14 @@ async def schema_retriever_node(state: ConversationState = INITIAL_STATE) -> Com
         print(len(state["messages"]))
         print(state["messages"][1].content)
         user_query = state["messages"][1].content
+        parsed_query = [msg.content for msg in state["messages"] if msg.name == "query_parser"][0]
         llm = ChatOpenAI(model="gpt-4o-mini", temperature=0)
         db_schema = await extract_relevant_schema()
         # schema_retriever = create_react_agent(
         #     model=llm,
         #     tools = [extract_relevant_schema],
         prompt=(
-        f"Map the user query: \n{user_query} \nto the database schema: \n{ db_schema}."
+        f"Map the user query: \n{user_query} \nto the database schema: \n{ db_schema} using the parsed query { parsed_query } as guidance."
         "The relevant database table is `seek_production.samples` which contains a JSON column 'json_metadata' with sample-specific metadata. "
         "Extract only the keys that are actually present in the schema and are also relevant to the user query. "
         "Do not invent any keys; if a key is not in the schema, omit it. "

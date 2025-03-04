@@ -39,7 +39,7 @@ def supervisor_node(state: ConversationState) -> Command[Literal["basic_sample_i
 
         payload = {
             "system_message": state["messages"][0].content,
-            "user_query": state["messages"][-1].content,
+            "user_query": state["messages"][1].content,
             "aggregatedMessages": [msg.content for msg in state["messages"]],
             "resource": get_resource(state)
         }

@@ -7,14 +7,15 @@ class DataSummarizer {
 class ToolArgs {
     key_string string? @description("json_metadata key")
     terms string[]? @description("terms to search for in the database")
-    uid string?|string[]? @description("uid of the sample. Can be a single uid or a list of uids")
+    uid string?|string[]? @description("exact uid of each sample provided by the user")
 }
 
 class Navigator {
     agent Agent @description("The current agent in the conversation")
+    explanation string @description("The explanation for choosing the next tool and tool arguments (how)")
     next_tool string @description("The next tool to use from the agent's toolbox")
     tool_args ToolArgs @description("The arguments to pass to the tool")
-    justification string @description("The justification for choosing the next tool")
+    justification string @description("The justification for choosing the next tool (why)")
 }
 
 class Responder {
@@ -165,9 +166,18 @@ class SchemaMapper {
 }
 
 class ResourceBox {
-    sample_metadata Metadata[]? @description("Sample metadata")
+    sample_metadata Metadata[]? | string? @description("Sample metadata")
     protocolUrl string? @description("Protocol download URL i.e.: https://nextseek.mit.edu/seek/sop/uid=<protocol_uid>")
     sampleUrl string? @description("Sample URL i.e.: https://nextseek.mit.edu/seek/sampletree/uid=<sample_uid>")
     UIDs string[]? @description("List of UIDs")
     db_schema Schema?|string? @description("A complete or partial schema of the database")
+    parsed_query ParsedQuery? @description("The parsed user query")
+}
+
+class ParsedQuery {
+    uid string[]? | string? @description("extracted UIDs of the samples from the user query")
+    sampletype string[]? | string? @description("extracted sample type from the user query i.e. mouse, tissue, cell line etc.")
+    assay string[]? | string? @description("extracted assay from the user query i.e. flow cytometry, sequencing, etc.")
+    attribute string[]? | string? @description("extracted attribute from the user query i.e. genotype, treatment, species, etc.")
+    terms string[]? | string? @description("extracted terms from the user query associated with a specific attribute i.e. 'rituximab' for treatment ")
 }

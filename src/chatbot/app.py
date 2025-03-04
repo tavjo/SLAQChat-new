@@ -27,14 +27,14 @@ os.environ["OPENAI_API_KEY"] = os.getenv("OPENAI_API_KEY")
 from copy import deepcopy
 
 async def run_agent_chatbot():
-    st.title("💬 NExtSEEK Chatbot")
-    st.caption("🚀 Interact with the NExtSEEK AI assistant powered by LangGraph, BAML, and OpenAI.")
+    st.title("💬 NExtSEEK-Chat")
+    st.caption("🚀 Interact with the NExtSEEK AI assistant to answer questions about your data.")
     
     # Sidebar with documentation link
-    with st.sidebar:
-        st.sidebar.markdown("[Review NExtSEEK documentation](https://koch-institute-mit.gitbook.io/mit-data-management-analysis-core)")
-        st.sidebar.markdown("[Install your own instance of NExtSEEK](https://github.com/BMCBCC/NExtSEEK)")
-        st.sidebar.markdown("[Visit our website for more information](https://www.nextseek.mit.edu/)")
+    # with st.sidebar:
+    #     st.sidebar.markdown("[Review NExtSEEK documentation](https://koch-institute-mit.gitbook.io/mit-data-management-analysis-core)")
+    #     st.sidebar.markdown("[Install your own instance of NExtSEEK](https://github.com/BMCBCC/NExtSEEK)")
+    #     st.sidebar.markdown("[Visit our website for more information](https://www.nextseek.mit.edu/)")
     
     # if "memory" not in st.session_state:
     # # In memory
@@ -56,8 +56,8 @@ async def run_agent_chatbot():
 
     if user_input:
         # Add user input to the conversation state
-        st.session_state.conversation.append(("User", user_input))
         st.chat_message("user").write(user_input)
+        st.session_state.conversation.append(("User", user_input))
         
         # Create a fresh state for each query by copying the initial state
         fresh_state = deepcopy(INITIAL_STATE)

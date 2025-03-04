@@ -102,13 +102,20 @@ class Metadata(BaseModel):
     ValidationQuality: Optional[str] = None
     Vendor: Optional[str] = None
 
+class ParsedQuery(TypedDict):
+    uid: Optional[str] | Optional[List[str]] 
+    sampletype: Optional[str] | Optional[List[str]]
+    assay: Optional[str] | Optional[List[str]]
+    attribute: Optional[str] | Optional[List[str]]
+    terms: Optional[str] | Optional[List[str]]
 
 class ResourceBox(TypedDict):
-    sample_metadata: Optional[Metadata] | Optional[List[Metadata]]
+    sample_metadata: Optional[Metadata] | Optional[List[Metadata]] | Optional[str]
     db_schema: Optional[DBSchema]
     protocolURL: Optional[str]
     sampleURL: Optional[str]
     UIDs: Optional[List[str]]  # You can omit '= None' in TypedDict
+    parsed_query: Optional[ParsedQuery]
 
 
 class AgentState(TypedDict):

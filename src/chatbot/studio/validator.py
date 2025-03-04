@@ -30,7 +30,7 @@ def validator_node(state: ConversationState) -> Command[Literal["FINISH"]]:
     try:
         payload = {
             "system_message": state["messages"][0].content,
-            "user_query": state["messages"][1].content,
+            "user_query": [msg.content for msg in state["messages"] if msg.name == "user"][0],
             "aggregatedMessages": [state["messages"][-1].content],
             "resource": get_resource(state)
         }

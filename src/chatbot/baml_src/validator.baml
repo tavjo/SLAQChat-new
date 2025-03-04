@@ -4,7 +4,7 @@ client<llm> ValidatorClient {
   options {
     api_key env.OPENAI_API_KEY
     model "gpt-4o"
-    temperature 0.7
+    temperature 0.5
   }
 }
 

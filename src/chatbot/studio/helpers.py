@@ -23,7 +23,8 @@ def default_resource_box() -> ResourceBox:
         "protocolURL": "",
         "sampleURL": "",
         "UIDs": [],
-        "db_schema": None
+        "db_schema": None,
+        "parsed_query": None
     }
 
 # Helper function to update the resource information.
@@ -70,7 +71,8 @@ def get_resource(state: ConversationState) -> ResourceBox:
         "protocolURL": resources.get("protocolURL", ""),
         "sampleURL": resources.get("sampleURL", ""),
         "UIDs": resources.get("UIDs", []),
-        "db_schema": resources.get("db_schema", None)
+        "db_schema": resources.get("db_schema", None),
+        "parsed_query": resources.get("parsed_query", None)
     }
     
     return resource_box
@@ -112,6 +114,10 @@ async def async_navigator_handler(
     try:
         if "resources" not in state or state["resources"] is None:
             state["resources"] = default_resource_box()
+        
+        print(f" State messages: {state['messages']}")
+
+        print("Creating payload...")
 
         payload = {
         "system_message": SYSTEM_MESSAGE,
@@ -119,8 +125,11 @@ async def async_navigator_handler(
         "aggregatedMessages": [msg.content for msg in state["messages"]],
         "resource": get_resource(state)
         }
+        print("Payload created.")
+        print(f" Payload messages: {payload['aggregatedMessages']}")
         # Call the BAML Navigate function asynchronously.
         start_time = time.time()
+        print("Calling BAML Navigator function...")
         nav_stream = b.stream.Navigate(agent, payload)
         
         # Await the final, fully parsed response.
@@ -131,7 +140,7 @@ async def async_navigator_handler(
         # print(f"Next tool: {next_tool}\n Justification: {nav_response.justification}")
         tool_args = nav_response.tool_args
         print(f"Navigation completed in {time.time() - start_time:.2f} seconds.")
-        return next_tool, tool_args, nav_response.justification
+        return next_tool, tool_args, nav_response.justification, nav_response.explanation
     except Exception as e:
         # Log the exception or handle it as needed
         print(f"An error occurred during navigation: {e}")

@@ -4,7 +4,7 @@ client<llm> NavClient {
   options {
     api_key env.OPENAI_API_KEY
     model "gpt-4o"
-    temperature 0.7
+    temperature 0
   }
 }
 
@@ -14,8 +14,8 @@ function Navigate(agent: Agent, payload: Payload) -> Navigator {
     You are a navigation system that determines the next appropriate tool to use from an agent's toolbox.
 
     Instructions:
-    1. Analyze the user query and conversation context
-    2. Select a tool from the agent's toolbox that best addresses the current need
+    1. Analyze the user query {{ payload.user_query }} and conversation context
+    2. Select a tool from the agent's toolbox that best addresses the user query
     3. Format tool arguments precisely based on the tool's requirements
     4. Provide clear justification for your tool selection
     5. Do not return a tool if none appear suitable to answer the user query. Instead return an empty string for the tool name and an empty list for the tool arguments.

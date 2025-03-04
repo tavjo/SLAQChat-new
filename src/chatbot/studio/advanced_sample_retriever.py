@@ -50,8 +50,8 @@ async def multi_sample_info(state: ConversationState = INITIAL_STATE)->dict|None
     }
     try:
         # Call the async navigator handler
-        next_tool, tool_args, justification = await async_navigator_handler(AGENT, state)
-        print(f"Justification: {justification}")
+        next_tool, tool_args, justification, explanation = await async_navigator_handler(AGENT, state)
+        print(f"Justification: {justification}\nExplanation: {explanation}")
         if tool_args:
             print(f"Tool args: {tool_args}")
         if next_tool ==  "get_metadata_by_uids":
@@ -68,7 +68,8 @@ async def multi_sample_info(state: ConversationState = INITIAL_STATE)->dict|None
             response = {
                 "result": "No tool was selected. Invalid query.",
                 "agent": agent,
-                "justification": justification
+                "justification": justification,
+                "explanation": explanation
             }
             return response
                 
@@ -84,9 +85,10 @@ async def multi_sample_info(state: ConversationState = INITIAL_STATE)->dict|None
             "agent": agent,
             "tool": next_tool,
             "new_resource": new_resource,
-            "justification": justification
+            "justification": justification,
+            "explanation": explanation
             }
-            msg = [HumanMessage(content = response["result"] + "\n" + response["justification"], name = "multi_sample_info_retriever")]
+            msg = [HumanMessage(content = response["result"] + "\n" + response["justification"] + "\n" + response["explanation"], name = "multi_sample_info_retriever")]
             update_messages(state, msg)
             print(list(response.keys()))
             return response
@@ -158,4 +160,4 @@ if __name__ == "__main__":
     update_messages(INITIAL_STATE, initial_state["messages"])
     update_resource(INITIAL_STATE, initial_state["resources"])
     results = asyncio.run(multi_sample_info_retriever_node())
-    print(results)
+    # print(results)

@@ -144,9 +144,17 @@ class Metadata(BaseModel):
 
 class Navigator(BaseModel):
     agent: "Agent"
+    explanation: str
     next_tool: str
     tool_args: "ToolArgs"
     justification: str
+
+class ParsedQuery(BaseModel):
+    uid: Union[Optional[List[str]], str] = None
+    sampletype: Union[Optional[List[str]], str] = None
+    assay: Union[Optional[List[str]], str] = None
+    attribute: Union[Optional[List[str]], str] = None
+    terms: Union[Optional[List[str]], str] = None
 
 class Payload(BaseModel):
     system_message: str
@@ -155,16 +163,17 @@ class Payload(BaseModel):
     resource: Optional["ResourceBox"] = None
 
 class QueryParser(BaseModel):
-    parsed_query: str
-    tasks: List[str]
+    parsed_query: "ParsedQuery"
+    explanation: str
     justification: str
 
 class ResourceBox(BaseModel):
-    sample_metadata: Optional[List["Metadata"]] = None
+    sample_metadata: Union[Optional[List["Metadata"]], str] = None
     protocolUrl: Optional[str] = None
     sampleUrl: Optional[str] = None
     UIDs: Optional[List[str]] = None
     db_schema: Union[Optional["Schema"], Optional[str]] = None
+    parsed_query: Optional["ParsedQuery"] = None
 
 class Responder(BaseModel):
     Next_worker: "Agent"

@@ -34,7 +34,7 @@ def response_formatter_node(state: ConversationState) -> Command[Literal["valida
         payload = {
             "system_message": SYSTEM_MESSAGE,
             "user_query": state["messages"][0].content,
-            "aggregatedMessages": [msg.content for msg in state["messages"]],
+            "aggregatedMessages": [msg.content for msg in state["messages"] if msg.name in ["query_parser", "responder"]],
             "resource": get_resource(state)
         }
 
