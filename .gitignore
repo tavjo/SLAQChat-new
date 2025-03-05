@@ -2,6 +2,10 @@
 *.env
 .env
 db_schema.json
+backend/Tools/json_update.ipynb
+backend/Tools/input.csv
+*log.txt
+assets
 
 # Python
 __pycache__/

@@ -16,32 +16,28 @@ import time
 from copy import deepcopy
 
 # Add the project root directory to the Python path
-project_root = os.path.abspath(os.path.join(os.path.dirname(__file__), '../../..'))
+project_root = os.path.abspath(os.path.join(os.path.dirname(__file__), '../..'))
 sys.path.append(project_root)
 
 # from src.chatbot.studio.models import ConversationState
 
 load_dotenv()
 os.environ["OPENAI_API_KEY"] = os.getenv("OPENAI_API_KEY")
+output_dir = os.path.join(project_root, "src/chatbot/assets/")
 
 from copy import deepcopy
 
 async def run_agent_chatbot():
     st.title("💬 NExtSEEK-Chat")
     st.caption("🚀 Interact with the NExtSEEK AI assistant to answer questions about your data.")
-    
-    # Sidebar with documentation link
-    # with st.sidebar:
-    #     st.sidebar.markdown("[Review NExtSEEK documentation](https://koch-institute-mit.gitbook.io/mit-data-management-analysis-core)")
-    #     st.sidebar.markdown("[Install your own instance of NExtSEEK](https://github.com/BMCBCC/NExtSEEK)")
-    #     st.sidebar.markdown("[Visit our website for more information](https://www.nextseek.mit.edu/)")
-    
-    # if "memory" not in st.session_state:
-    # # In memory
-    #     st.session_state["conn"] = aiosqlite.connect(":memory:", check_same_thread = False)
-    #     st.session_state["memory"] = AsyncSqliteSaver(st.session_state["conn"])
-    
-    # memory = st.session_state["memory"]
+
+    # File uploader widget for CSV files
+    uploaded_file = st.file_uploader("Upload a CSV file", type="csv", key="csv_upload")
+    if uploaded_file is not None:
+        # Save the uploaded file as "input.csv" in the current directory
+        with open(os.path.join(output_dir, "input.csv"), "wb") as f:
+            f.write(uploaded_file.getbuffer())
+        st.success("File uploaded and saved as input.csv")
 
     # Initialize session state for conversation
     if "conversation" not in st.session_state:
@@ -66,17 +62,9 @@ async def run_agent_chatbot():
         graph = sampleRetrieverGraph()
 
         # Create a HumanMessage and invoke the graph
-        # config={"configurable":  {"thread_id": "1"}}
         start_time = time.time()
         result = await graph.ainvoke(fresh_state)
         print(f"Total time taken: {time.time() - start_time:.2f} seconds")
-
-            # Debug: print the result structure
-        # print("Result structure:", result)
-        # if "messages" in result:
-        #     print("Messages in result:", result["messages"])
-        #     for i, msg in enumerate(result["messages"]):
-        #         print(f"Message {i}: {msg}")
 
         # Extract and display AI response
         if "messages" in result:

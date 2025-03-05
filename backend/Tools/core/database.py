@@ -7,6 +7,9 @@ import pandas as pd
 import logging
 from dotenv import load_dotenv
 import json
+import sys
+project_root = os.path.abspath(os.path.join(os.path.dirname(__file__), '../../..'))
+sys.path.append(project_root)
 from backend.Tools.schemas import ALLOWED_KEYS
 load_dotenv()
 
@@ -26,13 +29,13 @@ def get_db_connection(database_name: str = 'DB_NAME'):
         USER = os.getenv('DB_USER')
         DBNAME = os.getenv(database_name)
         PASSWORD = os.getenv('DB_PASSWORD')
-    
+        print("Creating database url")
         # Create the database URL
         DATABASE_URL = f"mysql+pymysql://{USER}:{PASSWORD}@{HOST}/{DBNAME}"
         
         # Create an engine
         engine = create_engine(DATABASE_URL)
-        
+        print(f"Connected to {DBNAME} on {HOST}")
         return engine
     except Exception as e:
         logging.error(f"Error connecting to the database: {e}")
@@ -98,13 +101,14 @@ def get_database_schema(database_name: str = 'DB_NAME', table_names: list[str] =
     engine.dispose()
     return schema
 
-def execute_query(query, database_name: str = 'DB_NAME'):
+def execute_query(query, database_name: str = 'DB_NAME', output_format: str = 'dict'):
     """
     Execute a SQL query using SQLAlchemy and return the results.
 
     Args:
         query (str): The SQL query to execute.
-
+        output_format (str): The format of the output. Default is 'dict'.
+        database_name (str): The name of the database to connect to. Default is 'DB_NAME'.
     Returns:
         list[dict]: A list of dictionaries representing the query results.
 
@@ -114,11 +118,23 @@ def execute_query(query, database_name: str = 'DB_NAME'):
     engine = None
     try:
         # Get a database session
+        print("Getting database connection")
         engine = get_db_connection(database_name)
         
         # Execute the query
-        result = pd.read_sql(query, engine)
-        formatted_result = result.to_dict(orient='records')
+        if engine is not None:
+            print("Executing query")
+            result = pd.read_sql(query, engine)
+            if output_format == 'dict':
+                formatted_result = result.to_dict(orient='records')
+            elif output_format == 'df':
+                formatted_result = result
+            else:
+                raise ValueError(f"Invalid output format: {output_format}")
+            print("Query executed successfully")
+        else:
+            print("No engine found")
+            formatted_result = []
         
         return formatted_result
     except SQLAlchemyError as e:
@@ -140,3 +156,63 @@ def get_cached_database_schema(database_name: str = 'DB_NAME', table_names: list
     This will query the database only if the cache has expired.
     """
     return get_database_schema()
+
+def execute_update_query(query, params=None, database_name: str = 'DB_NAME', batch_mode: bool = False):
+    """
+    Execute a SQL update/insert/delete query using SQLAlchemy.
+
+    Args:
+        query (sqlalchemy.sql.elements.TextClause): The SQLAlchemy text query to execute.
+        params (dict, list[dict], or None): Parameters for the query. Can be:
+            - None: No parameters
+            - dict: Single set of parameters for one query execution
+            - list[dict]: Multiple sets of parameters for batch execution
+        database_name (str): The name of the database to connect to. Default is 'DB_NAME'.
+        batch_mode (bool): Whether to execute as a batch operation. Default is False.
+
+    Returns:
+        int: Number of rows affected by the query.
+
+    Raises:
+        SQLAlchemyError: If there is an error executing the query.
+    """
+    engine = None
+    try:
+        # Get a database connection
+        print("Getting database connection")
+        engine = get_db_connection(database_name)
+        
+        # Execute the query
+        if engine is not None:
+            print("Executing update query")
+            connection = engine.connect()
+            
+            with connection.begin():
+                if batch_mode and isinstance(params, list):
+                    # Execute batch update
+                    total_affected = 0
+                    for param_set in params:
+                        result = connection.execute(query, param_set)
+                        total_affected += result.rowcount
+                    affected_rows = total_affected
+                elif params is not None:
+                    # Execute single update with parameters
+                    result = connection.execute(query, params)
+                    affected_rows = result.rowcount
+                else:
+                    # Execute update without parameters
+                    result = connection.execute(query)
+                    affected_rows = result.rowcount
+            
+            connection.close()
+            print(f"Update query executed successfully. Rows affected: {affected_rows}")
+            return affected_rows
+        else:
+            print("No engine found")
+            return 0
+    except SQLAlchemyError as e:
+        logging.error(f"Database update error: {e}")
+        raise
+    finally:
+        if engine:
+            engine.dispose()
