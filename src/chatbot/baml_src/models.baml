@@ -8,6 +8,7 @@ class ToolArgs {
     key_string string? @description("json_metadata key")
     terms string[]? @description("terms to search for in the database")
     uid string?|string[]? @description("exact uid of each sample provided by the user")
+    sample_type string?|string[]? @description("specific sample type(s) to pass to the tool")
 }
 
 class Navigator {
@@ -45,6 +46,7 @@ class Metadata {
     CellLineage string?
     Checksum_PrimaryData string?
     Checksum_PrimaryType string?
+    Cohort string?
     CompensationFCSParent string?
     Concentration string?
     ConcentrationUnits string?
@@ -92,6 +94,7 @@ class Metadata {
     StorageTemperatureUnits string?
     StorageType string?
     Stimulation string?
+    Study string?
     Timepoint string?
     TotalProtein string?
     TotalProteinUnits string?
@@ -160,18 +163,34 @@ class Schema {
 
 class SchemaMapper {
     name string @description("The name of the agent: schema_mapper")
+    relevant_keys string[] @description("The relevant keys in the database")
     schema_map Schema @description("The mapped schema of the database based on the user query")
-    pseudo_query string @description("The proposed query based on schema mapping")
     justification string @description("The justification for the mapping and proposed query")
+    explanation string @description("The explanation for the mapping")
+}
+
+class SampleTypeAttributes {
+    sampletype string @description("The sample type i.e. MUS, TIS, CEL")
+    st_description string @description("The description of the sample type")
+    attributes string[] @description("The attributes of the sample type")
+}
+
+class UpdatePipelineMetadata{
+    success bool @description("Whether the update was successful")
+    logs string[] @description("The logs from running the update pipeline")
+    errors string[]? @description("The errors from running the update pipeline")
+    stats map<string, int>? @description("The stats from running the update pipeline")
 }
 
 class ResourceBox {
-    sample_metadata Metadata[]? | string? @description("Sample metadata")
-    protocolUrl string? @description("Protocol download URL i.e.: https://nextseek.mit.edu/seek/sop/uid=<protocol_uid>")
-    sampleUrl string? @description("Sample URL i.e.: https://nextseek.mit.edu/seek/sampletree/uid=<sample_uid>")
+    sample_metadata Metadata? | Metadata[]? | string? @description("Sample metadata")
+    protocolURL string? @description("Protocol download URL i.e.: https://nextseek.mit.edu/seek/sop/uid=<protocol_uid>")
+    sampleURL string? @description("Sample URL i.e.: https://nextseek.mit.edu/seek/sampletree/uid=<sample_uid>")
     UIDs string[]? @description("List of UIDs")
-    db_schema Schema?|string? @description("A complete or partial schema of the database")
+    db_schema Schema? @description("A complete or partial schema of the database")
     parsed_query ParsedQuery? @description("The parsed user query")
+    st_attributes SampleTypeAttributes[]? | SampleTypeAttributes? @description("The sample type attributes")
+    update_info UpdatePipelineMetadata? @description("The update information")
 }
 
 class ParsedQuery {

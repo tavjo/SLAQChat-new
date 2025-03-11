@@ -9,13 +9,15 @@ sys.path.append(project_root)
 
 from typing_extensions import Literal
 from langgraph.types import Command
-# from src.chatbot.baml_client import b as baml
-from src.chatbot.studio.models import ConversationState, SchemaMapperState
-from src.chatbot.studio.helpers import update_messages, update_resource
+from src.chatbot.baml_client import b as baml
+
+from src.chatbot.studio.models import ConversationState, SchemaMapperState, ResourceBox, ParsedQuery, DBSchema
+from src.chatbot.studio.helpers import update_messages, update_resource, default_resource_box
 from backend.Tools.services.schema_service import extract_relevant_schema
 from langchain_openai import ChatOpenAI
 # from langgraph.prebuilt import create_react_agent
 import asyncio
+from datetime import datetime, timezone
 
 from src.chatbot.studio.prompts import (
     INITIAL_STATE
@@ -105,48 +107,58 @@ async def schema_retriever_node(state: ConversationState = INITIAL_STATE) -> Com
     try:
         start_time = time.time()
         print("Creating schema retriever...")
-        print(len(state["messages"]))
-        print(state["messages"][1].content)
-        user_query = state["messages"][1].content
-        parsed_query = [msg.content for msg in state["messages"] if msg.name == "query_parser"][0]
-        llm = ChatOpenAI(model="gpt-4o-mini", temperature=0)
+        messages = state.messages
+        print(len(messages))
+        print(messages[1].content)
+        user_query = messages[1].content
+        # parsed_query = [msg.content for msg in messages if msg.name == "query_parser"][0]
+        parsed_query = state.resources.parsed_query
+        # llm = ChatOpenAI(model="gpt-4o-mini", temperature=0)
         db_schema = await extract_relevant_schema()
         # schema_retriever = create_react_agent(
         #     model=llm,
         #     tools = [extract_relevant_schema],
-        prompt=(
-        f"Map the user query: \n{user_query} \nto the database schema: \n{ db_schema} using the parsed query { parsed_query } as guidance."
-        "The relevant database table is `seek_production.samples` which contains a JSON column 'json_metadata' with sample-specific metadata. "
-        "Extract only the keys that are actually present in the schema and are also relevant to the user query. "
-        "Do not invent any keys; if a key is not in the schema, omit it. "
-        "For example, if the user asks for 'samples of genotype X', return the closest matching keys from the schema such as 'UID' and 'Genotype'. "
-        "If the user query is not related to the database, return 'No relevant information found in the database.' "
-        # "\nImportant: When invoking extract_relevant_schema, do not pass any explicit value for 'database_name' or 'table_names'. "
-        "\nImportant: Only return the relevant keys from the json_metadata column of the schema, the database schema as a json object, and your justification. Do not return any other information such as speculated keys or proposed queries."
-        )
+        # prompt=(
+        # f"Map the user query: \n{user_query} \nto the database schema: \n{ db_schema} using the parsed query { parsed_query } as guidance."
+        # "The relevant database table is `seek_production.samples` which contains a JSON column 'json_metadata' with sample-specific metadata. "
+        # "Extract only the keys that are actually present in the schema and are also relevant to the user query. "
+        # "Do not invent any keys; if a key is not in the schema, omit it. "
+        # "For example, if the user asks for 'samples of genotype X', return the closest matching keys from the schema such as 'UID' and 'Genotype'. "
+        # "If the user query is not related to the database, return 'No relevant information found in the database.' "
+        # # "\nImportant: When invoking extract_relevant_schema, do not pass any explicit value for 'database_name' or 'table_names'. "
+        # "\nImportant: Only return the relevant keys from the json_metadata column of the schema, the database schema as a json object, and your justification. Do not return any other information such as speculated keys or proposed queries."
         # )
-        messages = [HumanMessage(content=prompt)]
-        update_messages(state, messages)
+        # # )
+        # messages.append(HumanMessage(content=prompt))
+        # update_messages(state, messages)
         print("Schema retriever created in {time.time() - start_time:.2f} seconds.")
         print("Invoking schema retriever...")
         start_time = time.time()
-        result = llm.with_structured_output(SchemaMapperState).invoke(messages)
+        # result = llm.with_structured_output(SchemaMapperState).invoke(messages)
+        result = baml.RetrieveSchema(user_query, db_schema=db_schema, parsed_query=parsed_query)
         print(f"Invocation completed in {time.time() - start_time:.2f} seconds.")
         if result and result is not None:
-            print(result)
-            new_resource = {
-                "db_schema": result.schema_map
-            }
-            update_resource(state, new_resource)
+            print(f"result: {result}")
+            # new_resource = {
+            #     "db_schema": result.schema_map
+            # }
+            # update_resource(state, new_resource)
+            state.resources.db_schema = db_schema
             updated_messages = [HumanMessage(content=user_query, name="user")] + [HumanMessage(content= "The relevant database keys are: " + "\n".join(result.relevant_keys), name="schema_mapper")]
-            update_messages(state, updated_messages)
-            print(state["messages"])
+            messages.extend(updated_messages)
+            # update_messages(state, updated_messages)
+            # print(updated_messages)
         goto = "multi_sample_info_retriever"
         print(f"Mapping completed in {time.time() - start_time:.2f} seconds.")
-        print(state["resources"])
+        print(state.resources)
+        state.version += 1
+        state.timestamp = datetime.now(timezone.utc)
         return Command(
             update={
-                "messages": updated_messages
+                "messages": messages,
+                "version": state.version,
+                "timestamp": state.timestamp.isoformat(),
+                "resources": state.resources if state.resources else default_resource_box()
             },
             goto=goto
         )
@@ -154,7 +166,10 @@ async def schema_retriever_node(state: ConversationState = INITIAL_STATE) -> Com
         print(f"An error occurred while mapping query to schema: {e}")
         return Command(
             update={
-                "messages": state["messages"] + [HumanMessage(content=f"An error occurred while mapping query to schema: {e}", name="schema_mapper")]
+                "messages": messages.append(HumanMessage(content=f"An error occurred while mapping query to schema: {e}", name="schema_mapper")),
+                "version": state.version,
+                "timestamp": state.timestamp.isoformat(),
+                "resources": state.resources if state.resources else default_resource_box()
             },
             goto="validator"
         )
@@ -162,10 +177,16 @@ async def schema_retriever_node(state: ConversationState = INITIAL_STATE) -> Com
 # Example usage:
 if __name__ == "__main__":
     initial_state: ConversationState = {
-        "messages": [
+        "messages": [HumanMessage(content="What is the genotype for the mice with these UIDs: 'MUS-220124FOR-1' and 'MUS-220124FOR-73'?", name = "user"),
+                     HumanMessage(content="""Parsed User Query: ```json{'uid': ['MUS-220124FOR-1', 'MUS-220124FOR-73'], 'sampletype': 'mouse', 'assay': None, 'attribute': 'genotype', 'terms': None}```Justification: The query explicitly mentions UIDs, which are identifiers for specific samples, in this case, mice. The user is interested in the 'genotype' attribute of these samples, as indicated by the phrase 'What is the genotype'. The sample type is inferred to be 'mouse' based on the context of the UIDs and the mention of 'mice'. Explanation: The user query is asking for the genotype of specific mice identified by their UIDs. The UIDs provided are 'MUS-220124FOR-1' and 'MUS-220124FOR-73'. The query is focused on the 'genotype' attribute of these mice.""", name="query_parser")
+                     
             # HumanMessage(content="Retrieve UIDs of all samples of this genotype: 'RaDR+/+; GPT+/+; Aag -/-'", name = "user")
-            HumanMessage(content="Can you please list all the samples associated with the following scientist: 'Patricia Grace'?", name = "user")
-        ]
+            # HumanMessage(content="Can you please list all the samples associated with the following scientist: 'Patricia Grace'?", name = "user")
+        ],
+    "resources": ResourceBox(
+        parsed_query= ParsedQuery.model_validate({'uid': ['MUS-220124FOR-1', 'MUS-220124FOR-73'], 'sampletype': 'mouse', 'assay': None, 'attribute': 'genotype', 'terms': None})
+    )
     }
-    update_messages(INITIAL_STATE, initial_state["messages"])
+    INITIAL_STATE.messages.extend(initial_state["messages"])
+    INITIAL_STATE.resources = initial_state["resources"]
     asyncio.run(schema_retriever_node())

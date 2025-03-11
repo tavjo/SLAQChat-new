@@ -13,30 +13,50 @@ project_root = os.path.abspath(os.path.join(os.path.dirname(__file__), '../../..
 sys.path.append(project_root)
 
 from backend.Tools.core.database import execute_query, execute_update_query
+from backend.Tools.services.helpers import async_wrap, timer_wrap
+from src.chatbot.studio.models import SampleTypeAttributes
+import asyncio
+from backend.Tools.schemas import UpdatePipelineMetadata
+import logging.handlers
 
 load_dotenv()
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
-
-def get_st_attributes() -> pd.DataFrame:
+@async_wrap
+@timer_wrap
+def get_st_attributes(output_format: str = 'object', filter_by: List[str] = None) -> pd.DataFrame | List[SampleTypeAttributes]:
     """
     Retrieves sample attributes and their associated sample types from the database.
-    
+    Args:
+        output_format (str): The format of the output. Can be 'object' for list of SampleTypeAttributes or 'df' for pd.DataFrame
+        filter_by (List[str]): A list of sample types to filter the results by. Default is None.
     Returns:
-        pd.DataFrame: DataFrame containing attribute titles and their corresponding sample type titles.
+        pd.DataFrame | List[SampleTypeAttributes]: DataFrame containing attribute titles and their corresponding sample type titles or list of SampleTypeAttributes
     """
     # Query with JOIN
     query = text("""
-    SELECT sa.title AS attribute_title, st.title AS sample_type_title
+    SELECT sa.title AS attribute_title, st.title AS sample_type_title, st.description AS sample_type_description
     FROM seek_production.sample_attributes sa
     JOIN seek_production.sample_types st 
     ON sa.sample_type_id = st.id;
     """)
     st_attributes = execute_query(query, database_name='DB_NAME', output_format='df')
-    return st_attributes
+    if filter_by is not None:
+        logging.info(f"Filtering results by sample types: {filter_by}")
+        st_attributes = st_attributes[st_attributes['sample_type_title'].isin(filter_by)]
+    if output_format == 'object':
+        logging.info(f"Returning attributes as list of SampleTypeAttributes")
+        # Group attributes by sample type
+        st_attributes = st_attributes.groupby(['sample_type_title', 'sample_type_description'])['attribute_title'].apply(list).reset_index()
+        return [SampleTypeAttributes(sampletype=row['sample_type_title'], st_description=row['sample_type_description'], attributes=row['attribute_title']) for _, row in st_attributes.iterrows()]
+    else:
+        logging.info(f"Returning attributes as DataFrame")
+        return st_attributes.drop(columns=['sample_type_description'])
 
+@async_wrap
+@timer_wrap
 def get_input_data() -> pd.DataFrame:
     """
     Reads and processes the input CSV file containing sample data to update.
@@ -58,7 +78,10 @@ def get_input_data() -> pd.DataFrame:
     input = input[cols]
     return input
 
-def check_attributes(st_attributes: pd.DataFrame) -> pd.DataFrame:
+
+# @async_wrap
+@timer_wrap
+async def check_attributes(st_attributes: pd.DataFrame) -> pd.DataFrame:
     """
     Verifies that attributes in the input file exist in the database for each sample type.
     
@@ -70,7 +93,7 @@ def check_attributes(st_attributes: pd.DataFrame) -> pd.DataFrame:
     """
     ##ENSURE Attributes you want to update exist in the DB. 1 == exist, 0 == dont exist
 
-    input = get_input_data()
+    input = await get_input_data()
 
     # Step 1: Get unique SampleTypes
     unique_sample_types = input["SampleType"].unique()
@@ -92,7 +115,10 @@ def check_attributes(st_attributes: pd.DataFrame) -> pd.DataFrame:
     # print(attributes_to_check)
     return attributes_to_check
 
-def filter_attributes(attributes_to_check: pd.DataFrame) -> pd.DataFrame:
+
+# @async_wrap
+@timer_wrap
+async def filter_attributes(attributes_to_check: pd.DataFrame) -> pd.DataFrame:
     """
     Filters out samples with attributes that don't exist in the database.
     
@@ -103,7 +129,7 @@ def filter_attributes(attributes_to_check: pd.DataFrame) -> pd.DataFrame:
         pd.DataFrame: Filtered input data containing only samples with valid attributes.
     """
     ### Removes samples from input who have 0's in the above sample.
-    input = get_input_data()
+    input = await get_input_data()
     
     # Step 1: Identify SampleTypes with a '0' in any attribute
     sample_types_to_remove = attributes_to_check[attributes_to_check.eq(0).any(axis=1)]["SampleType"]
@@ -124,6 +150,9 @@ def filter_attributes(attributes_to_check: pd.DataFrame) -> pd.DataFrame:
     input_filtered = input[~input["SampleType"].isin(sample_types_to_remove)]
     return input_filtered
 
+
+@async_wrap
+@timer_wrap
 def fetch_relevant_metadata(input_filtered: pd.DataFrame) -> Tuple[Dict[str, Dict[str, Any]], int]:
     """
     Fetches metadata for samples in batches from the database.
@@ -152,7 +181,7 @@ def fetch_relevant_metadata(input_filtered: pd.DataFrame) -> Tuple[Dict[str, Dic
     batch_size = 250  # Reduce from 1000 to 250 to avoid locks
     metadata_dict = {}
 
-    fetch_start = time.time()
+    # fetch_start = time.time()
     missing_uids = []
 
     for i in range(0, len(uids), batch_size):
@@ -179,11 +208,11 @@ def fetch_relevant_metadata(input_filtered: pd.DataFrame) -> Tuple[Dict[str, Dic
         missing_uids.extend(missing_in_batch)
         total_batches = (len(uids) + batch_size - 1) // batch_size
 
-        print(f"Fetched batch {i // batch_size + 1}/{total_batches} with {len(results)} records.")
+        logging.info(f"Fetched batch {i // batch_size + 1}/{total_batches} with {len(results)} records.")
 
-    fetch_end = time.time()
-    logging.info(f"Fetched {len(metadata_dict)} records in {fetch_end - fetch_start:.2f} seconds.")
-    print(f"Total records fetched: {len(metadata_dict)}")
+    # fetch_end = time.time()
+    # logging.info(f"Fetched {len(metadata_dict)} records in {fetch_end - fetch_start:.2f} seconds.")
+    logging.info(f"Total records fetched: {len(metadata_dict)}")
 
     # Log missing UIDs if any
     if missing_uids:
@@ -192,6 +221,9 @@ def fetch_relevant_metadata(input_filtered: pd.DataFrame) -> Tuple[Dict[str, Dic
     
     return metadata_dict, batch_size
 
+
+@async_wrap
+@timer_wrap
 def update_metadata(metadata_dict: Dict[str, Dict[str, Any]], input_filtered: pd.DataFrame) -> Tuple[List[Tuple[str, str]], List[str]]:
     """
     Updates sample metadata in memory based on input data.
@@ -208,7 +240,7 @@ def update_metadata(metadata_dict: Dict[str, Dict[str, Any]], input_filtered: pd
     # Step 2: Update json_metadata in memory
     update_data = []
     not_found_attrs = []
-    update_start = time.time()
+    # update_start = time.time()
 
     logging.info("In-memory json update process started.")
 
@@ -233,12 +265,15 @@ def update_metadata(metadata_dict: Dict[str, Dict[str, Any]], input_filtered: pd
             if updated:
                 update_data.append((json.dumps(metadata), uid))
 
-    update_end = time.time()
-    logging.info(f"Processed {len(update_data)} updates in {update_end - update_start:.2f} seconds.")
-    print(f"Processed {len(update_data)} updates.")
+    # update_end = time.time()
+    # logging.info(f"Processed {len(update_data)} updates in {update_end - update_start:.2f} seconds.")
+    logging.info(f"Processed {len(update_data)} updates.")
 
     return update_data, not_found_attrs
 
+
+@async_wrap
+@timer_wrap
 def update_records(update_data: List[Tuple[str, str]], batch_size: int, not_found_attrs: List[str]) -> Optional[List[str]]:
     """
     Performs batch updates to the database with the updated metadata.
@@ -280,10 +315,10 @@ def update_records(update_data: List[Tuple[str, str]], batch_size: int, not_foun
     logging.info(f"Updated {len(update_data)} records in {bulk_update_end - bulk_update_start:.2f} seconds.")
     print(f"Updated {len(update_data)} records.")
 
-    total_time = bulk_update_end - bulk_update_start
+    # total_time = bulk_update_end - bulk_update_start
 
-    logging.info(f"Update process completed in {total_time:.2f} seconds.")
-    print(f"Update process completed in {total_time:.2f} seconds.")
+    # logging.info(f"Update process completed in {total_time:.2f} seconds.")
+    # print(f"Update process completed in {total_time:.2f} seconds.")
 
     # Optional: Print missing attributes
     if not_found_attrs:
@@ -296,7 +331,7 @@ def update_records(update_data: List[Tuple[str, str]], batch_size: int, not_foun
         return None
 
 
-def update_metadata_pipeline() -> None:
+async def update_metadata_pipeline() -> UpdatePipelineMetadata:
     """
     Main function that orchestrates the entire metadata update process.
     
@@ -309,30 +344,93 @@ def update_metadata_pipeline() -> None:
     6. Performs batch updates to the database
     
     Returns:
-        None
+        Dict[str, Any]: Dictionary containing execution results and logs
     """
-    start_time = time.time()
-    # Get sample attributes
-    logger.info("Getting sample attributes")
-    st_attributes = get_st_attributes()
-    # Check if attributes you want to update exist in the DB. 1 == exist, 0 == dont exist
-    logger.info("Checking if attributes exist in the DB")
-    attributes_to_check = check_attributes(st_attributes)
-    # Removes samples from input who have 0's in the above sample.
-    logger.info("Filtering samples with missing attributes")
-    input_filtered = filter_attributes(attributes_to_check)
-    # Fetch json_metadata in Batches (Fixes Fetch Limit Issue)
-    logger.info("Fetching json_metadata in Batches")
-    metadata_dict, batch_size = fetch_relevant_metadata(input_filtered)
-    # Update json_metadata in memory
-    logger.info("Updating json_metadata in memory")
-    update_data, not_found_attrs = update_metadata(metadata_dict, input_filtered)
-    # Perform batch updates (Avoids Locking) with Debugging
-    logger.info("Performing batch updates with Debugging")
-    update_records(update_data, batch_size, not_found_attrs)
-    end_time = time.time()
-    logger.info(f"Total time taken: {end_time - start_time:.2f} seconds")
-
+    # Set up log capture
+    log_handler = logging.handlers.MemoryHandler(capacity=1024*10, 
+                                              target=None)
+    formatter = logging.Formatter('%(asctime)s - %(levelname)s - %(message)s')
+    log_handler.setFormatter(formatter)
+    logger.addHandler(log_handler)
+    
+    # Create results dictionary
+    results = {
+        "success": True,
+        "logs": [],
+        "errors": [],
+        "stats": {
+            "total_records_processed": 0,
+            "records_updated": 0,
+            "missing_attributes": 0,
+            "execution_time": 0
+        }
+    }
+    
+    try:
+        start_time = time.time()
+        
+        # Get sample attributes
+        logger.info("Getting sample attributes")
+        st_attributes = await get_st_attributes(output_format = 'df', filter_by = None)
+        
+        # Check if attributes you want to update exist in the DB
+        logger.info("Checking if attributes exist in the DB")
+        attributes_to_check = await check_attributes(st_attributes)
+        
+        # Removes samples from input who have 0's in the attributes_to_check
+        logger.info("Filtering samples with missing attributes")
+        input_filtered = await filter_attributes(attributes_to_check)
+        
+        # Fetch json_metadata in Batches
+        logger.info("Fetching json_metadata in Batches")
+        metadata_dict, batch_size = await fetch_relevant_metadata(input_filtered)
+        
+        # Update json_metadata in memory
+        logger.info("Updating json_metadata in memory")
+        update_data, not_found_attrs = await update_metadata(metadata_dict, input_filtered)
+        
+        # Perform batch updates
+        logger.info("Performing batch updates")
+        await update_records(update_data, batch_size, not_found_attrs)
+        
+        end_time = time.time()
+        execution_time = end_time - start_time
+        logger.info(f"Total time taken: {execution_time:.2f} seconds")
+        
+        # Update stats
+        results["stats"]["total_records_processed"] = len(input_filtered)
+        results["stats"]["records_updated"] = len(update_data)
+        results["stats"]["missing_attributes"] = len(not_found_attrs) if not_found_attrs else 0
+        results["stats"]["execution_time"] = execution_time
+        
+        # Add missing attribute warnings if any
+        if not_found_attrs:
+            results["errors"] = not_found_attrs[:100]  # Limit to first 100
+            results["missing_attributes"] = len(not_found_attrs)
+            if len(not_found_attrs) > 100:
+                results["errors"].append(f"...and {len(not_found_attrs) - 100} more attribute errors")
+                
+    except Exception as e:
+        logger.error(f"Pipeline failed: {str(e)}", exc_info=True)
+        results["success"] = False
+        results["errors"].append(str(e))
+    
+    # Get logs from handler
+    for record in log_handler.buffer:
+        log_message = formatter.format(record)
+        results["logs"].append(log_message)
+    
+    # Remove the handler after capturing logs
+    logger.removeHandler(log_handler)
+    
+    return results
 
 if __name__ == "__main__":
-    update_metadata_pipeline()
+    result = asyncio.run(update_metadata_pipeline())
+        # Optionally print logs
+    if result["logs"]:
+        print("\nExecution logs:")
+        for log in result["logs"]:
+            print(log)
+    # res = asyncio.run(update_metadata_pipeline())
+    # print(res[:10])

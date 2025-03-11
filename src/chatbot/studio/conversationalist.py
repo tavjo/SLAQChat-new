@@ -16,6 +16,7 @@ from src.chatbot.studio.helpers import get_resource, update_messages, default_re
 from src.chatbot.studio.prompts import (
     INITIAL_STATE
 )
+from datetime import datetime, timezone
 
 def conversationalist_node(state: ConversationState) -> Command[Literal["query_parser", "validator", "FINISH"]]:
     """
@@ -32,9 +33,9 @@ def conversationalist_node(state: ConversationState) -> Command[Literal["query_p
     """
     try:
         payload = {
-            "system_message": state["messages"][0].content,
-            "user_query": state["messages"][-1].content,
-            "aggregatedMessages": [msg.content for msg in state["messages"]],
+            "system_message": state.messages[0].content,
+            "user_query": state.messages[-1].content,
+            "aggregatedMessages": [msg.content for msg in state.messages],
             "resource": default_resource_box()
         }
 
@@ -53,13 +54,17 @@ def conversationalist_node(state: ConversationState) -> Command[Literal["query_p
         else:
             goto = "FINISH"
             new_aggregate = response.response
-            updated_messages = state["messages"] + [HumanMessage(content=new_aggregate, name=response.name)]
+            updated_messages = state.messages.append(HumanMessage(content=new_aggregate, name=response.name)) 
         
-        update_messages(state, updated_messages)
+        # update_messages(state, updated_messages)
         print(goto)
+        state.version += 1
+        state.timestamp = datetime.now(timezone.utc)
         return Command(
             update={
-                "messages": updated_messages
+                "messages": updated_messages,
+                "version": state.version,
+                "timestamp": state.timestamp.isoformat()
             },
             goto=goto
         )
@@ -67,7 +72,9 @@ def conversationalist_node(state: ConversationState) -> Command[Literal["query_p
         print(f"An error occurred in conversationalist_node: {e}")
         return Command(
             update={
-                "messages": state["messages"]
+                "messages": state.messages,
+                "version": state.version,
+                "timestamp": state.timestamp.isoformat()
             },
             goto="validator",
         )

@@ -167,7 +167,7 @@ class BamlAsyncClient:
     
     async def RetrieveSchema(
         self,
-        user_query: str,db_schema: types.Schema,
+        user_query: str,db_schema: types.Schema,parsed_query: types.ParsedQuery,
         baml_options: BamlCallOptions = {},
     ) -> types.SchemaMapper:
       __tb__ = baml_options.get("tb", None)
@@ -180,7 +180,7 @@ class BamlAsyncClient:
       raw = await self.__runtime.call_function(
         "RetrieveSchema",
         {
-          "user_query": user_query,"db_schema": db_schema,
+          "user_query": user_query,"db_schema": db_schema,"parsed_query": parsed_query,
         },
         self.__ctx_manager.get(),
         tb,
@@ -422,7 +422,7 @@ class BamlStreamClient:
     
     def RetrieveSchema(
         self,
-        user_query: str,db_schema: types.Schema,
+        user_query: str,db_schema: types.Schema,parsed_query: types.ParsedQuery,
         baml_options: BamlCallOptions = {},
     ) -> baml_py.BamlStream[partial_types.SchemaMapper, types.SchemaMapper]:
       __tb__ = baml_options.get("tb", None)
@@ -437,6 +437,7 @@ class BamlStreamClient:
         {
           "user_query": user_query,
           "db_schema": db_schema,
+          "parsed_query": parsed_query,
         },
         None,
         self.__ctx_manager.get(),

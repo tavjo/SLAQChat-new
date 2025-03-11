@@ -68,6 +68,7 @@ class Metadata(BaseModel):
     CellLineage: Optional[str] = None
     Checksum_PrimaryData: Optional[str] = None
     Checksum_PrimaryType: Optional[str] = None
+    Cohort: Optional[str] = None
     CompensationFCSParent: Optional[str] = None
     Concentration: Optional[str] = None
     ConcentrationUnits: Optional[str] = None
@@ -115,6 +116,7 @@ class Metadata(BaseModel):
     StorageTemperatureUnits: Optional[str] = None
     StorageType: Optional[str] = None
     Stimulation: Optional[str] = None
+    Study: Optional[str] = None
     Timepoint: Optional[str] = None
     TotalProtein: Optional[str] = None
     TotalProteinUnits: Optional[str] = None
@@ -162,12 +164,14 @@ class QueryParser(BaseModel):
     justification: Optional[str] = None
 
 class ResourceBox(BaseModel):
-    sample_metadata: Optional[Union[Optional[List["Metadata"]], str]] = None
-    protocolUrl: Optional[str] = None
-    sampleUrl: Optional[str] = None
+    sample_metadata: Optional[Union[Optional["Metadata"], Union[Optional[List["Metadata"]], str]]] = None
+    protocolURL: Optional[str] = None
+    sampleURL: Optional[str] = None
     UIDs: Optional[List[str]] = None
-    db_schema: Optional[Union[Optional["Schema"], Optional[str]]] = None
+    db_schema: Optional["Schema"] = None
     parsed_query: Optional["ParsedQuery"] = None
+    st_attributes: Optional[Union[Optional[List["SampleTypeAttributes"]], "SampleTypeAttributes"]] = None
+    update_info: Optional["UpdatePipelineMetadata"] = None
 
 class Responder(BaseModel):
     Next_worker: Optional["Agent"] = None
@@ -179,14 +183,20 @@ class ResponseFormatter(BaseModel):
     messages: Optional["Payload"] = None
     justification: Optional[str] = None
 
+class SampleTypeAttributes(BaseModel):
+    sampletype: Optional[str] = None
+    st_description: Optional[str] = None
+    attributes: List[str]
+
 class Schema(BaseModel):
     tables: List["Table"]
 
 class SchemaMapper(BaseModel):
     name: Optional[str] = None
+    relevant_keys: List[str]
     schema_map: Optional["Schema"] = None
-    pseudo_query: Optional[str] = None
     justification: Optional[str] = None
+    explanation: Optional[str] = None
 
 class Supervisor(BaseModel):
     Next_worker: Optional["Agent"] = None
@@ -200,10 +210,17 @@ class ToolArgs(BaseModel):
     key_string: Optional[str] = None
     terms: Optional[List[str]] = None
     uid: Optional[Union[Optional[str], Optional[List[str]]]] = None
+    sample_type: Optional[Union[Optional[str], Optional[List[str]]]] = None
 
 class ToolMetadata(BaseModel):
     doc: Optional[str] = None
     signature: Optional[str] = None
+
+class UpdatePipelineMetadata(BaseModel):
+    success: Optional[bool] = None
+    logs: List[str]
+    errors: Optional[List[str]] = None
+    stats: Optional[Dict[str, Optional[int]]] = None
 
 class Validator(BaseModel):
     name: Optional[str] = None

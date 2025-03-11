@@ -14,11 +14,12 @@ from backend.Tools.services.module_to_json import functions_to_json, module_to_j
 from src.chatbot.studio.helpers import async_navigator_handler, update_resource, default_resource_box
 import asyncio
 from langchain_core.messages import HumanMessage, SystemMessage
-from src.chatbot.studio.models import ConversationState
-from src.chatbot.studio.helpers import create_worker
+from src.chatbot.studio.models import ConversationState, ToolResponse
+from src.chatbot.studio.helpers import create_worker, create_tool_call_node
 from langgraph.types import Command
 from typing_extensions import Literal
 from dotenv import load_dotenv
+from datetime import datetime, timezone
 
 load_dotenv()
 
@@ -27,7 +28,7 @@ TOOL_DISPATCH = {
     attr.__name__: attr for attr in TOOLSET1
 }
 
-async def basic_sample_info(state: ConversationState = INITIAL_STATE)->dict|None:
+async def basic_sample_info(state: ConversationState = INITIAL_STATE)->ToolResponse:
     """
     Main function to handle the asynchronous navigation and tool execution.
 
@@ -63,12 +64,13 @@ async def basic_sample_info(state: ConversationState = INITIAL_STATE)->dict|None
             resource_type = "sampleURL"
         
         if next_tool == "" and len(tool_args) == 0:
-            response = {
-                "result": "No tool was selected. Invalid query.",
-                "agent": agent,
-                "justification": justification,
-                "explanation": explanation
-            }
+            response = ToolResponse(
+                result=state.resources if state.resources else default_resource_box(),
+                response="No tool was selected. Invalid query.",
+                agent=agent,
+                justification=justification,
+                explanation=explanation
+            )
             return response
         
         print(f"Executing {next_tool} with args: {uid}")
@@ -76,29 +78,31 @@ async def basic_sample_info(state: ConversationState = INITIAL_STATE)->dict|None
         
         if result:
             new_resource = {
-                resource_type: result,
+                resource_type: result
             }
             update_resource(state, new_resource)
-            print(f"Updated resource: {state['resources']}")
+            print(f"Updated resource: {state.resources}")
         else:
             print(f"No result from {next_tool}")
         
-        response = {
-            "result": f"The {next_tool} tool has been executed successfully. The result is: {result}",
-            "agent": agent,
-            "tool": next_tool,
-            "new_resource": new_resource,
-            "justification": justification,
-            "explanation": explanation
-        }
-        
-        return response
-        # return result
+        return ToolResponse(
+            result=state.resources,
+            response=f"The {next_tool} tool has been executed successfully. The result is: {result}",
+            agent=agent,
+            justification=justification,
+            explanation=explanation
+        )
     except Exception as e:
         print(f"An error occurred: {e}")
-        return None
+        return ToolResponse(
+            result=state.resources if state.resources else default_resource_box(),
+            response=f"An error occurred: {e}",
+            agent=agent,
+            justification=justification,
+            explanation=explanation
+        )
 
-async def basic_sample_info_retriever_node(state: ConversationState = INITIAL_STATE, tools = TOOLSET1, func = basic_sample_info) -> Command[Literal["supervisor", "validator"]]:
+async def basic_sample_info_retriever_node(state: ConversationState = INITIAL_STATE, tools = TOOLSET1, func = basic_sample_info)-> Command[Literal["supervisor", "validator"]]:
     """
     Asynchronously retrieves sample information using a specified function and updates the conversation state.
 
@@ -113,45 +117,60 @@ async def basic_sample_info_retriever_node(state: ConversationState = INITIAL_ST
     Raises:
         Exception: If any error occurs during the execution of the worker or invocation.
     """
-    try:
-        start_time = time.time()
-        print("Creating worker...")
-        basic_sample_info_retriever = await create_worker(tools,func)
-        print(f"Worker created in {time.time() - start_time:.2f} seconds.")
+    return await create_tool_call_node(state,tools,func,"basic_sample_info_retriever")
+    # try:
+    #     start_time = time.time()
+    #     print("Creating worker...")
+    #     basic_sample_info_retriever = await create_worker(tools,func)
+    #     print(f"Worker created in {time.time() - start_time:.2f} seconds.")
 
-        start_time = time.time()
-        print("Invoking basic_sample_info_retriever...")
-        result = await basic_sample_info_retriever.ainvoke(state)
-        print(f"Invocation completed in {time.time() - start_time:.2f} seconds.")
-        print(result["messages"][-1].content)
-        # update_resource(state, result["new_resource"])
-        print(state["resources"])
+    #     start_time = time.time()
+    #     print("Invoking basic_sample_info_retriever...")
+    #     result = await basic_sample_info_retriever.ainvoke(state)
+    #     print(f"Invocation completed in {time.time() - start_time:.2f} seconds.")
+    #     print(result["messages"][-1].content)
+    #     # update_resource(state, result["new_resource"])
+    #     print(state.resources)
 
-        updated_messages = state["messages"] + [HumanMessage(content=result["messages"][-1].content, name="basic_sample_info_retriever")]
-        return Command(
-            update={
-                "messages": updated_messages,
-                "resources": state["resources"]
-            },
-            goto="supervisor",
-        )
-    except Exception as e:
-        messages = f"An error occurred while retrieving sample information: {e}"
-        updated_messages = state["messages"] + [HumanMessage(content=messages, name="basic_sample_info_retriever")]
-        print(messages)
-        return Command(
-            update={
-                "messages": updated_messages
-            },
-            goto="validator",
-        )
+    #     updated_messages = state.messages.append(HumanMessage(content=result["messages"][-1].content, name="basic_sample_info_retriever"))
+    #     state.version += 1
+    #     state.timestamp = datetime.now(timezone.utc)
+    #     return Command(
+    #         update={
+    #             "messages": updated_messages,
+    #             "resources": state.resources,
+    #             "version": state.version,
+    #             "timestamp": state.timestamp.isoformat()
+    #         },
+    #         goto="supervisor",
+    #     )
+    # except Exception as e:
+    #     error_msg = f"An error occurred while retrieving sample information: {e}"
+    #     updated_messages = state.messages.append(HumanMessage(content=error_msg, name="basic_sample_info_retriever"))
+    #     print(error_msg)
+    #     return Command(
+    #         update={
+    #             "messages": updated_messages,
+    #             "version": state.version,
+    #             "timestamp": state.timestamp.isoformat()
+    #         },
+    #         goto="validator",
+    #     )
 
 if __name__ == "__main__":
     # asyncio.run(basic_sample_info())
     initial_state: ConversationState = {
-        "messages": [HumanMessage(content="Can you tell me more about the sample with UID PAV-220630FLY-1031?")],
+        "messages": [HumanMessage(content="Can you tell me more about the sample with UID PAV-220630FLY-1031?", name="user"),
+                     HumanMessage(content="""Parsed User Query: ```json
+{'uid': 'PAV-220630FLY-1031', 'sampletype': None, 'assay': None, 'attribute': None, 'terms': None}
+```
+Justification: The query explicitly mentions a UID, which is a unique identifier for a sample. There are no other specific attributes, sample types, assays, or terms mentioned in the query.
+Explanation: The user query is asking for more information about a specific sample identified by the UID 'PAV-220630FLY-1031'.
+""", name="query_parser")
+                     ],
         # "messages": [HumanMessage(content="What is the weather today?")],
         "resources": default_resource_box(),
     }
-    results = asyncio.run(basic_sample_info_retriever_node(initial_state))
-    print(results)
+    INITIAL_STATE.messages.extend(initial_state["messages"])
+    asyncio.run(basic_sample_info_retriever_node())
+    # print(results)

@@ -13,12 +13,13 @@ from src.chatbot.baml_client.async_client import b as baml
 from src.chatbot.studio.models import ConversationState
 from src.chatbot.studio.helpers import get_resource
 import asyncio
+from datetime import datetime, timezone
 
 from src.chatbot.studio.prompts import (
     SYSTEM_MESSAGE
 )
 
-async def data_summarizer_node(state: ConversationState) -> Command[Literal["responder"]]:
+async def data_summarizer_node(state: ConversationState) -> Command[Literal["responder", "validator"]]:
     """
     Summarizes data based on the current conversation state and updates the conversation flow.
 
@@ -34,8 +35,8 @@ async def data_summarizer_node(state: ConversationState) -> Command[Literal["res
     try:
         payload = {
             "system_message": SYSTEM_MESSAGE,
-            "user_query": state["messages"][0].content,
-            "aggregatedMessages": [msg.content for msg in state["messages"]],
+            "user_query": state.messages[1].content,
+            "aggregatedMessages": [msg.content for msg in state.messages],
             "resource": get_resource(state)
         }
 
@@ -47,11 +48,15 @@ async def data_summarizer_node(state: ConversationState) -> Command[Literal["res
         name = "data_summarizer"
         print(f"Agent: {name}\nJustification: {result.justification}")
         goto = "responder"
-        updated_messages = state["messages"] + [HumanMessage(content=result.summary, name=name)]
+        updated_messages = state.messages.append(HumanMessage(content=result.summary, name=name))
         print(f"Data summarized in {time.time() - start_time:.2f} seconds.")
+        state.version += 1
+        state.timestamp = datetime.now(timezone.utc)
         return Command(
             update={
-                "messages": updated_messages
+                "messages": updated_messages,
+                "version": state.version,
+                "timestamp": state.timestamp.isoformat()
             },
             goto=goto,
         )
@@ -59,9 +64,11 @@ async def data_summarizer_node(state: ConversationState) -> Command[Literal["res
         print(f"An error occurred in data_summarizer_node: {e}")
         return Command(
             update={
-                "messages": state["messages"]
+                "messages": state.messages,
+                "version": state.version,
+                "timestamp": state.timestamp.isoformat()
             },
-            goto="responder",
+            goto="validator",
         )
 
 

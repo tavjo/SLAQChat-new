@@ -1,18 +1,19 @@
-from typing import TypedDict, Optional, Any, Annotated, Sequence
+from typing import Optional, Any#, Annotated, Sequence, TypedDict
 # from langgraph.graph import MessagesState
 from langchain_core.messages import BaseMessage
-from langgraph.graph.message import add_messages
-from pydantic import BaseModel
+# from langgraph.graph.message import add_messages
+from pydantic import BaseModel, Field
 from typing import List
-from langgraph.managed import IsLastStep, RemainingSteps
-from langgraph.prebuilt.chat_agent_executor import StructuredResponse
-
+# from langgraph.managed import IsLastStep, RemainingSteps
+# from langgraph.prebuilt.chat_agent_executor import StructuredResponse
+from datetime import datetime, timezone
+from backend.Tools.schemas import UpdatePipelineMetadata
 class Column(BaseModel):
     name: str
     type: str
     nullable: bool
-    default: Optional[Any]
-    json_keys: Optional[List[str]]
+    default: Optional[Any] = None
+    json_keys: Optional[List[str]] = None
 
 class Table(BaseModel):
     name: str
@@ -20,7 +21,6 @@ class Table(BaseModel):
 
 class DBSchema(BaseModel):
     tables: List[Table] | str
-
 
 class Metadata(BaseModel):
     AntibodyParent: Optional[str] = None
@@ -102,46 +102,63 @@ class Metadata(BaseModel):
     ValidationQuality: Optional[str] = None
     Vendor: Optional[str] = None
 
-class ParsedQuery(TypedDict):
-    uid: Optional[str] | Optional[List[str]] 
-    sampletype: Optional[str] | Optional[List[str]]
-    assay: Optional[str] | Optional[List[str]]
-    attribute: Optional[str] | Optional[List[str]]
-    terms: Optional[str] | Optional[List[str]]
+class ParsedQuery(BaseModel):
+    uid: Optional[str] | Optional[List[str]] = None
+    sampletype: Optional[str] | Optional[List[str]] = None
+    assay: Optional[str] | Optional[List[str]] = None
+    attribute: Optional[str] | Optional[List[str]] = None
+    terms: Optional[str] | Optional[List[str]] = None
 
-class ResourceBox(TypedDict):
-    sample_metadata: Optional[Metadata] | Optional[List[Metadata]] | Optional[str]
-    db_schema: Optional[DBSchema]
-    protocolURL: Optional[str]
-    sampleURL: Optional[str]
-    UIDs: Optional[List[str]]  # You can omit '= None' in TypedDict
-    parsed_query: Optional[ParsedQuery]
+class SampleTypeAttributes(BaseModel):
+    sampletype: str
+    st_description: str
+    attributes: List[str]
 
+class ResourceBox(BaseModel):
+    sample_metadata: Optional[Metadata] | Optional[List[Metadata]] | Optional[str] = None
+    db_schema: Optional[DBSchema] = None
+    protocolURL: Optional[str] = None
+    sampleURL: Optional[str] = None
+    UIDs: Optional[List[str]] = None  
+    parsed_query: Optional[ParsedQuery] = None
+    st_attributes: Optional[List[SampleTypeAttributes]] | Optional[SampleTypeAttributes] = None
+    update_info: Optional[UpdatePipelineMetadata] = None
 
-class AgentState(TypedDict):
-    """The state of the agent."""
-    messages: Annotated[Sequence[BaseMessage], add_messages, ResourceBox]
 
 # New unified state model: separate messages and resources.
 
-class ToolMetadata(TypedDict):
+class ToolMetadata(BaseModel):
     doc: str
     signature: str
 
-class WorkerState(TypedDict):
+class WorkerState(BaseModel):
     agent: str
     role: str
-    toolbox: Optional[dict[str, ToolMetadata]]
+    toolbox: Optional[dict[str, ToolMetadata]] = None
 
-class ConversationState(TypedDict):
+class ConversationState(BaseModel):
     messages: List[BaseMessage]
-    resources: Optional[ResourceBox]
-    available_workers: Optional[list[WorkerState]]
-    is_last_step: IsLastStep
-    remaining_steps: RemainingSteps
-    structured_response: StructuredResponse
+    session_id: str = Field(..., description="Unique session identifier")
+    version: int = Field(1, description="State version for synchronization")
+    timestamp: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+    resources: Optional[ResourceBox] = None
+    available_workers: Optional[list[WorkerState]] = None
+
 
 class SchemaMapperState(BaseModel):
-    relevant_keys: List[str]
-    schema_map: str
+    relevant_keys: Optional[List[str]] = None
+    schema_map: DBSchema
     justification: str
+
+class DeltaMessage(BaseModel):
+    session_id: Optional[str] = None
+    timestamp: datetime
+    new_message: BaseMessage
+    version: Optional[int]
+
+class ToolResponse(BaseModel):
+    result: Optional[Any] = None
+    response: Optional[str] = None
+    agent: Optional[str] = None
+    justification: Optional[str] = None
+    explanation: Optional[str] = None

@@ -160,3 +160,9 @@ ALLOWED_KEYS = list(Metadata.__annotations__.keys())
 
 class PAVInfo(BaseModel):
     pass
+
+class UpdatePipelineMetadata(BaseModel):
+    success: bool
+    logs: list[str]
+    errors: Optional[list[str]] = None
+    stats: dict[str, Any]

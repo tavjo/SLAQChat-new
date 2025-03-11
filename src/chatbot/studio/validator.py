@@ -10,11 +10,12 @@ sys.path.append(project_root)
 from typing_extensions import Literal
 from langgraph.types import Command
 from src.chatbot.baml_client import b as baml
-from src.chatbot.studio.models import ConversationState
-from src.chatbot.studio.helpers import get_resource, update_messages
+from src.chatbot.studio.models import ConversationState, ResourceBox
+from src.chatbot.studio.helpers import get_resource, update_messages, default_resource_box
+from datetime import datetime, timezone
+from src.chatbot.studio.prompts import INITIAL_STATE
 
-
-def validator_node(state: ConversationState) -> Command[Literal["FINISH"]]:
+def validator_node(state: ConversationState = INITIAL_STATE) -> Command[Literal["FINISH"]]:
     """
     Validates the current conversation state and updates the conversation flow.
 
@@ -28,11 +29,12 @@ def validator_node(state: ConversationState) -> Command[Literal["FINISH"]]:
         Exception: If any error occurs during the validation process.
     """
     try:
+        messages = state.messages
         payload = {
-            "system_message": state["messages"][0].content,
-            "user_query": [msg.content for msg in state["messages"] if msg.name == "user"][0],
-            "aggregatedMessages": [state["messages"][-1].content],
-            "resource": get_resource(state)
+            "system_message": messages[0].content,
+            "user_query": [msg.content for msg in messages if msg.name == "user"][0],
+            "aggregatedMessages": [msg.content for msg in messages],
+            "resource": state.resources if state.resources else default_resource_box()
         }
 
         start_time = time.time()
@@ -43,19 +45,21 @@ def validator_node(state: ConversationState) -> Command[Literal["FINISH"]]:
         print(f"Agent: {response.name}\nJustification: {response.justification}")
         goto = "FINISH"
         if response.Valid:
-            # new_aggregate = str(response.Valid) + "\n" + response.justification
-            new_aggregate = state["messages"][-1].content
+            new_aggregate = messages[-1].content
         elif response.Clarifying_Question:
             new_aggregate = response.Clarifying_Question
         else:
             new_aggregate = response.error
         print(new_aggregate)
-
-        updated_messages = [HumanMessage(content=new_aggregate, name="validator")]
-        update_messages(state, updated_messages)
+        messages.append(HumanMessage(content=new_aggregate, name="validator"))
+        # update_messages(state, updated_messages)
+        state.version += 1
+        state.timestamp = datetime.now(timezone.utc)
         return Command(
             update={
-                "messages": updated_messages
+                "messages": messages,
+                "version": state.version,
+                "timestamp": state.timestamp.isoformat()
             },
             goto=goto
         )
@@ -63,7 +67,9 @@ def validator_node(state: ConversationState) -> Command[Literal["FINISH"]]:
         print(f"An error occurred in validator_node: {e}")
         return Command(
             update={
-                "messages": state["messages"] + [HumanMessage(content=f"An error occurred in while validating the response: {e}", name="validator")]
+                "messages": messages.append(HumanMessage(content=f"An error occurred in while validating the response: {e}", name="validator")),
+                "version": state.version,
+                "timestamp": state.timestamp.isoformat()
             },
             goto="FINISH"
         )
@@ -82,4 +88,6 @@ if __name__ == "__main__":
         ],
         "resources": {'sample_metadata': [{'UID': 'PAV-220630FLY-1031', 'Name': '29518-190327', 'Scientist': 'JoAnne Flynn', 'RecordDate': '', 'Protocol': 'P.FLY-231011-V1_Patient-Visit-CD8.docx', 'Type': 'Scan', 'Procedure': '', 'CollectionTime': '', 'Parent': 'NHP-220630FLY-2', 'VisitFacility': 'Flynn Lab', 'VisitLocation': '', 'Notes': 'P0099', 'Publish_uri': 'https://fairdomhub.org/samples/23142', 'TestType': '', 'TestResult': '', 'TestResultFile': '', 'Coscientist': '', 'ProcedureDuration': '', 'DurationUnits': '', 'SampleCreationDate': '2019-03-27 00:00:00', 'BALInstilledVolume': '', 'BALCollectedVolume': '', 'VolumeUnits': '', 'Treatment1': '', 'Treatment1Type': '', 'Treatment1Route': '', 'Treatment1Dose': '', 'Treatment1DoseUnits': '', 'Treatment2': '', 'Treatment2Type': '', 'Treatment2Route': '', 'Treatment2Dose': '', 'Treatment2DoseUnits': '', 'Treatment3': '', 'Treatment3Type': '', 'Treatment3Route': '', 'Treatment3Dose': '', 'Treatment3DoseUnits': '', 'Treatment4': '', 'Treatment4Type': '', 'Treatment4Route': '', 'Treatment4Dose': '', 'Treatment4DoseUnits': '', 'Treatment5': '', 'Treatment5Type': '', 'Treatment5Route': '', 'Treatment5Dose': '', 'Treatment5DoseUnits': '', 'TestType2': '', 'TestResult2': '', 'TestResultFile2': '', 'TestType3': '', 'TestResult3': '', 'TestResultFile3': '', 'Protocol_Classification': '', 'Classification': '', 'ExperimentalTimepoint': '', 'Treatment1Parent': '', 'Treatment2Parent': '', 'Treatment3Parent': '', 'Treatment4Parent': '', 'Treatment5Parent': '', 'NumInjections': ''}], 'protocolURL': '', 'sampleURL': '', 'UIDs': []}
     }
-    validator_node(initial_state)
+    INITIAL_STATE.messages.extend(initial_state["messages"])
+    INITIAL_STATE.resources = ResourceBox.model_validate(initial_state["resources"])
+    validator_node()

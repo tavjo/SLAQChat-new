@@ -35,10 +35,12 @@ function Navigate(agent: Agent, payload: Payload) -> Navigator {
 
     {{ _.role("system") }}
     Current agent state and available tools:
-
-    {{ _.role("user") }}
+    
     Agent Information:
     {{ agent }}
+
+    Agent Toolbox:
+    {{ agent.toolbox }}
   "#
 }
 

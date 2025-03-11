@@ -11,11 +11,12 @@ from typing_extensions import Literal
 from langgraph.types import Command
 from src.chatbot.baml_client import b as baml
 from src.chatbot.studio.models import ConversationState
-from src.chatbot.studio.helpers import get_resource
+from src.chatbot.studio.helpers import get_resource, default_resource_box
 
 from src.chatbot.studio.prompts import (
     SYSTEM_MESSAGE
 )
+from datetime import datetime, timezone
 
 def response_formatter_node(state: ConversationState) -> Command[Literal["validator"]]:
     """
@@ -31,11 +32,12 @@ def response_formatter_node(state: ConversationState) -> Command[Literal["valida
         Exception: If any error occurs during the response formatting process.
     """
     try:
+        messages = state.messages
         payload = {
             "system_message": SYSTEM_MESSAGE,
-            "user_query": state["messages"][0].content,
-            "aggregatedMessages": [msg.content for msg in state["messages"] if msg.name in ["query_parser", "responder"]],
-            "resource": get_resource(state)
+            "user_query": messages[1].content,
+            "aggregatedMessages": [msg.content for msg in messages if msg.name in ["query_parser", "responder"]],
+            "resource": state.resources
         }
 
         start_time = time.time()
@@ -47,10 +49,15 @@ def response_formatter_node(state: ConversationState) -> Command[Literal["valida
         print(f"Agent: {result.name}\nJustification: {result.justification}")
         goto = "validator"
         name = "response_formatter"
-        updated_messages = state["messages"] + [HumanMessage(content=result.formattedResponse, name=name)]
+        messages.append(HumanMessage(content=result.formattedResponse, name=name))
+        state.version += 1
+        state.timestamp = datetime.now(timezone.utc)
         return Command(
             update={
-                "messages": updated_messages
+                "messages": messages,
+                "version": state.version,
+                "timestamp": state.timestamp.isoformat(),
+                "resources": state.resources if state.resources else default_resource_box()
             },
             goto=goto
         )
@@ -58,7 +65,10 @@ def response_formatter_node(state: ConversationState) -> Command[Literal["valida
         print(f"An error occurred in response_formatter_node: {e}")
         return Command(
             update={
-                "messages": state["messages"]
+                "messages": messages.append(HumanMessage(content=f"An error occurred in response_formatter_node: {e}", name=name)),
+                "version": state.version,
+                "timestamp": state.timestamp.isoformat(),
+                "resources": state.resources if state.resources else default_resource_box()
             },
             goto="validator",
         )

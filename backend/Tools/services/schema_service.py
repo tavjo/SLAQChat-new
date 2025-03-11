@@ -18,9 +18,10 @@ project_root = os.path.abspath(os.path.join(os.path.dirname(__file__), '../../..
 sys.path.append(project_root)
 
 from backend.Tools.core.database import get_cached_database_schema
+from src.chatbot.studio.models import DBSchema
 
 
-async def extract_relevant_schema(database_name: str = 'DB_NAME', table_names: list[str] = ['samples']):
+async def extract_relevant_schema(database_name: str = 'DB_NAME', table_names: list[str] = ['samples']) -> DBSchema:
     """
     Extracts the relevant schema for a given database.
 
@@ -47,14 +48,14 @@ async def extract_relevant_schema(database_name: str = 'DB_NAME', table_names: l
         #     f.write(schema_json)
         schema = json.loads(schema_json)
         schema = schema["tables"]
-
+        db_schema = DBSchema.model_validate({"tables": schema})
     except Exception as e:
         logger.error(f"Error extracting schema for database '{database_name}': {e}")
         raise
     finally:
         end_time = time.time()
         logger.info(f"Retrived schema in : {end_time - start_time} seconds")
-    return schema
+    return db_schema
 
 # Example usage
 if __name__ == "__main__":
