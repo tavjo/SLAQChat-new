@@ -12,7 +12,7 @@ import logging
 from langgraph.types import Command
 from typing_extensions import Literal
 from datetime import datetime, timezone
-from langchain_core.messages import HumanMessage
+from langchain_core.messages import AIMessage
 from backend.Tools.schemas import UpdatePipelineMetadata
 logger = logging.getLogger(__name__)
 
@@ -50,32 +50,88 @@ def populate_sample_metadata(sample_metadata: dict) -> Metadata:
     return Metadata.model_validate(sample_metadata)
 
 def populate_db_schema(db_schema: dict) -> DBSchema:
-    tables = []
-    for table in db_schema:
-        table_components = {
-            "name": table["name"],
-            "columns": [Column.model_validate(column) for column in table["columns"]]
-        }
-        tables.append(Table.model_validate(table_components))
-    return DBSchema.model_validate({"tables": tables})
+    """
+    Convert the database schema to a DBSchema Pydantic model.
+    
+    Args:
+        db_schema: Dictionary or Pydantic model containing database schema information
+        
+    Returns:
+        DBSchema: A validated Pydantic model of the database schema
+    """
+    logger = logging.getLogger(__name__)
+    
+    try:
+        # Ensure db_schema is properly formatted
+        if not db_schema:
+            logger.warning("Empty db_schema provided")
+            return DBSchema.model_validate({"tables": []})
+            
+        # Handle both list and dict formats
+        if isinstance(db_schema, dict) and "tables" in db_schema:
+            logger.debug("Processing db_schema in dictionary format with 'tables' key")
+            tables_data = db_schema["tables"]
+        elif isinstance(db_schema, list):
+            logger.debug("Processing db_schema as direct list of tables")
+            tables_data = db_schema
+        else:
+            logger.debug("Converting db_schema to dict")
+            tables_data = db_schema.model_dump()["tables"]
+            
+        if not isinstance(tables_data, list):
+            logger.error(f"Expected list of tables, got {type(tables_data)}: {tables_data}")
+            raise TypeError(f"Tables data must be a list, got {type(tables_data)}")
+        
+        tables = []
+        for i, table in enumerate(tables_data):
+            try:
+                if not isinstance(table, dict):
+                    logger.error(f"Table at index {i} is not a dict: {type(table)}")
+                    raise TypeError(f"Each table must be a dict, got {type(table)}")
+                
+                # Ensure required keys exist
+                if "name" not in table:
+                    logger.error(f"Missing 'name' key in table at index {i}")
+                    raise KeyError(f"Missing 'name' key in table at index {i}")
+                if "columns" not in table:
+                    logger.error(f"Missing 'columns' key in table {table['name']}")
+                    raise KeyError(f"Missing 'columns' key in table {table['name']}")
+                
+                table_components = {
+                    "name": table["name"],
+                    "columns": [Column.model_validate(column) for column in table["columns"]]
+                }
+                tables.append(Table.model_validate(table_components))
+            except (TypeError, KeyError) as e:
+                logger.error(f"Error processing table {i}: {e}", exc_info=True)
+                raise
+            except Exception as e:
+                logger.error(f"Unexpected error processing table {i}: {e}", exc_info=True)
+                raise ValueError(f"Failed to process table at index {i}: {str(e)}")
+        
+        return DBSchema.model_validate({"tables": tables})
+        
+    except Exception as e:
+        logger.error(f"Failed to populate db_schema: {e}", exc_info=True)
+        raise ValueError(f"Failed to populate database schema: {str(e)}")
 
 def populate_sample_type_attributes(sample_type_attributes: dict) -> SampleTypeAttributes:
     return SampleTypeAttributes.model_validate(sample_type_attributes)
 
 def populate_parsed_query(parsed_query: dict|ParsedQuery) -> ParsedQuery:
-    parsedquerydict = ParsedQuery.model_dump()
+    # parsedquerydict = ParsedQuery.model_dump()
     if isinstance(parsed_query, ParsedQuery):
         parsed_query_dict = parsed_query.model_dump()
     else:
         parsed_query_dict = parsed_query
     
     # Update only fields that exist in the model
-    for key, value in parsedquerydict.items():
-        if key in parsed_query_dict:
-            logger.debug(f"Updating resource field: {key}")
-            parsed_query_dict[key] = value
-        else:
-            logger.warning(f"Ignoring unknown resource field: {key}")
+    # for key, value in parsedquerydict.items():
+    #     if key in parsed_query_dict:
+    #         logger.debug(f"Updating resource field: {key}")
+    #         parsed_query_dict[key] = value
+    #     else:
+    #         logger.warning(f"Ignoring unknown resource field: {key}")
     return ParsedQuery.model_validate(parsed_query_dict)
 
 def get_resource(state: ConversationState) -> ResourceBox:    
@@ -213,7 +269,6 @@ async def async_navigator_handler(
 ):
     # from src.chatbot.studio.models import WorkerState, ConversationState
     from src.chatbot.baml_client.async_client import b
-    from src.chatbot.baml_client import b as baml
     from src.chatbot.studio.prompts import SYSTEM_MESSAGE
 
     """
@@ -244,30 +299,18 @@ async def async_navigator_handler(
         messages = state.messages
 
         payload = {
-        "system_message": SYSTEM_MESSAGE,
+        "system_message": messages[0].content,
         "user_query": messages[1].content,
         "aggregatedMessages": [msg.content for msg in messages],
-        "resource": state.resources if state.resources else default_resource_box()
+        "resource": get_resource(state)
         }
         logger.info("Payload created.")
         logger.info(f"Payload: {payload}")
         # logger.info(f" Payload messages: {payload['aggregatedMessages']}")
-        # Call the BAML Navigate function asynchronously.
-        # start_time = time.time()
         logger.info("Calling BAML Navigator function...")
-        
-        # try:
-            # Try the current method first
+    
         nav_stream = b.stream.Navigate(agent, payload)
         nav_response = await nav_stream.get_final_response()
-        # except AttributeError as e:
-        #     if "Collector" in str(e):
-        #         # Try alternative method if Collector is missing
-        #         logger.info("Using alternative method due to missing Collector")
-        #         nav_response = baml.Navigate(agent, payload)
-        #     else:
-        #         # Re-raise if it's a different attribute error
-        #         raise
         
         if nav_response:
             # Extract the tool choice and its argument.
@@ -309,7 +352,7 @@ async def create_worker(tools, func):
     """
     try:
         from src.chatbot.studio.models import ConversationState
-        from langchain_core.messages import HumanMessage
+        from langchain_core.messages import AIMessage
         from langgraph.graph import StateGraph
         from langgraph.prebuilt import tools_condition, ToolNode
 
@@ -336,7 +379,7 @@ async def create_worker(tools, func):
                 
                 if response is None:
                     logger.error("Function returned None response")
-                    return {"messages": [HumanMessage(content="An error occurred: No response was generated.")]}
+                    return {"messages": [AIMessage(content="An error occurred: No response was generated.")]}
                 
                 if response.result:
                     logger.info(f"Creating messages...")
@@ -345,19 +388,19 @@ async def create_worker(tools, func):
                         messages = messages.strip()  # Remove leading/trailing whitespace
                         logger.info(f"Messages created: {messages}")
                         return {
-                            "messages": [HumanMessage(content=messages)],
+                            "messages": [AIMessage(content=messages)],
                             'resources': response.result
                         }
                     except Exception as e:
                         logger.error(f"Error creating message content: {e}", exc_info=True)
-                        return {"messages": [HumanMessage(content=f"Error formatting response: {str(e)}")]}
+                        return {"messages": [AIMessage(content=f"Error formatting response: {str(e)}")]}
                 else:
                     logger.debug(f"No result in response")
                     error_message = response.response or "Error retrieving data."
-                    return {"messages": [HumanMessage(content=error_message)]}
+                    return {"messages": [AIMessage(content=error_message)]}
             except Exception as e:
                 logger.error(f"Error executing {func.__name__}: {e}", exc_info=True)
-                return {"messages": [HumanMessage(content=f"An error occurred while processing: {str(e)}")]}
+                return {"messages": [AIMessage(content=f"An error occurred while processing: {str(e)}")]}
 
         # Create and configure the graph
         if not tools:
@@ -388,9 +431,9 @@ async def create_worker(tools, func):
         raise ValueError(f"Worker creation failed: {str(e)}")
 
 async def create_tool_call_node(state: ConversationState,tools: list[callable], func: callable, agent: str) -> Command[Literal["supervisor", "validator"]]:
+    agent = agent
+    messages = state.messages
     try:
-        agent = agent
-        messages = state.messages
         start_time = time.time()
         logger.info("Creating worker...")
         worker = await create_worker(tools,func)
@@ -403,17 +446,8 @@ async def create_tool_call_node(state: ConversationState,tools: list[callable], 
         logger.info(f"Result: {res}")
 
         logger.info("Adding new messages to state...")
-        messages.append(res["messages"][-1])
+        messages.append(AIMessage(content=res["messages"][-1].content, name=agent))
         logger.info(f"Updated messages: {messages}")
-        # Check if resources were updated
-        # logger.info(f"Updating Resources...")   
-        # if state.resources == res["resources"]:
-        #     logger.info(f"State resources: {state.resources}")
-        # elif state.resources != res["resources"]:
-        #     update_resource(state, )
-        #     logger.info(f"Updated resources: {state.resources}")
-        # elif not state.resources and not res["resources"]:
-        #     logger.warning("No resources to update")
         state.version += 1
         state.timestamp = datetime.now(timezone.utc)
         logger.info(f"{agent} work completed. Returning command to supervisor...")
@@ -422,20 +456,20 @@ async def create_tool_call_node(state: ConversationState,tools: list[callable], 
                 "messages": messages,
                 "version": state.version,
                 "timestamp": state.timestamp.isoformat(),
-                "resources": state.resources if state.resources else default_resource_box()
+                "resources": get_resource(state)
             },
             goto="supervisor",
         )
     except Exception as e:
         error_msg = f"An error occurred at {agent} node: {e}"
-        messages.append(HumanMessage(content=error_msg, name=agent))
+        messages.append(AIMessage(content=error_msg, name=agent))
         logger.error(f"{error_msg}\n{messages}")
         return Command(
             update={
                 "messages": messages,
                 "version": state.version,
                 "timestamp": state.timestamp.isoformat(),
-                "resources": state.resources if state.resources else default_resource_box()
+                "resources": get_resource(state)
             },
             goto="validator",
         )

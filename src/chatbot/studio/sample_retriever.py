@@ -46,7 +46,7 @@ def finish_node(state: ConversationState) -> Command[Literal["__end__"]]:
 
 def sampleRetrieverGraph(state: ConversationState = INITIAL_STATE, memory = None):
     builder = StateGraph(ConversationState)
-    builder.add_edge(START, "conversationalist")
+    builder.add_edge(START, "query_parser")
     builder.add_node("conversationalist", conversationalist_node)
     builder.add_node("query_parser", query_parser_node)
     builder.add_node("schema_retriever", schema_retriever_node)

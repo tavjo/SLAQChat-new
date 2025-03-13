@@ -1,7 +1,8 @@
-from langchain_core.messages import HumanMessage
+import logging
 import sys
 import os
 import time
+import traceback
 
 # Add the project root directory to the Python path
 project_root = os.path.abspath(os.path.join(os.path.dirname(__file__), '../../..'))
@@ -11,16 +12,22 @@ from typing_extensions import Literal
 from langgraph.types import Command
 from src.chatbot.baml_client import b as baml
 from src.chatbot.studio.models import ConversationState
-from src.chatbot.studio.helpers import get_resource, update_messages, update_resource, default_resource_box, ResourceBox, ParsedQuery
-import backend.Tools.services.basic_sample_service
-from backend.Tools.services.module_to_json import module_to_json
+from src.chatbot.studio.helpers import get_resource, update_resource
 from datetime import datetime, timezone
+from langchain_core.messages import HumanMessage, AIMessage
 
 from src.chatbot.studio.prompts import (
     INITIAL_STATE
 )
 
-def query_parser_node(state: ConversationState = INITIAL_STATE) -> Command[Literal["supervisor", "validator"]]:
+# Configure logging
+logging.basicConfig(
+    level=logging.INFO,
+    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
+)
+logger = logging.getLogger(__name__)
+
+def query_parser_node(state: ConversationState = INITIAL_STATE) -> Command[Literal["conversationalist", "validator"]]:
     """
     Receives a user query and breaks it down into a list of queries.
 
@@ -28,65 +35,96 @@ def query_parser_node(state: ConversationState = INITIAL_STATE) -> Command[Liter
         state (ConversationState): The current state of the conversation.
 
     Returns:
-        Command[Literal["supervisor"]]: A command object with updated messages, directing the flow to the next worker.
+        Command[Literal["conversationalist", "validator"]]: A command object with updated messages, directing the flow to the next worker.
 
     Raises:
         Exception: If any error occurs during the parsing process.
     """
+    goto = "validator"
+    messages = state.messages
     try:
-        print("Creating payload...")
-        goto = "supervisor"
-        messages = state.messages
+        logger.info("Creating payload for query parsing")
 
         payload = {
             "system_message": messages[0].content,
             "user_query": messages[-1].content,
             "aggregatedMessages": [msg.content for msg in messages],
-            "resource": state.resources if state.resources else default_resource_box()
+            "resource": get_resource(state)
         }
-        print("Payload created...")
+        logger.debug("Payload created: %s", payload)
         
-        print("Parsing query...")
+        logger.info("Parsing query...")
         start_time = time.time()
-        response = baml.ParseQuery(context = payload)
-        print(f"Query parsing completed in {time.time() - start_time:.2f} seconds.")
+        try:
+            response = baml.ParseQuery(context=payload)
+            elapsed_time = time.time() - start_time
+            logger.info(f"Query parsing completed in {elapsed_time:.2f} seconds")
+        except Exception as parse_error:
+            logger.error(f"Error during BAML query parsing: {str(parse_error)}")
+            logger.debug(f"Parse error details: {traceback.format_exc()}")
+            raise
 
-        parsed_query = response.parsed_query.model_dump()#{"parsed_query": response.parsed_query}
-        print(f"Parsed Query: {parsed_query}\nJustification: {response.justification}\nExplanation: {response.explanation}")
+        try:
+            parsed_query = response.parsed_query.model_dump()
+            logger.info(f"Parsed Query: {parsed_query}")
+            logger.debug(f"Justification: {response.justification}")
+            logger.debug(f"Explanation: {response.explanation}")
+        except AttributeError as ae:
+            logger.error(f"Invalid response format from BAML: {str(ae)}")
+            logger.debug(f"Response structure: {response}")
+            raise
 
         parsed_query_string = f"Parsed User Query: ```json\n{parsed_query}\n```\nJustification: {response.justification}\nExplanation: {response.explanation}"
 
-        print(parsed_query_string)
-        print("Updating resources...")
-        # update_resource(state, parsed_query)
-        state.resources = ResourceBox(parsed_query=ParsedQuery.model_validate(parsed_query))
-        print("Resources updated...")
-        print(state.resources)
+        logger.info("Updating resources with parsed query")
+        try:
+            update_resource(state, {"parsed_query": parsed_query})
+            logger.debug(f"Updated resources: {get_resource(state)}")
+        except Exception as resource_error:
+            logger.error(f"Error updating resources: {str(resource_error)}")
+            logger.debug(f"Resource error details: {traceback.format_exc()}")
+            raise
+
         # Merge the new message with the existing ones
-        messages.append(HumanMessage(content=parsed_query_string, name="query_parser"))
+        messages.append(AIMessage(content=parsed_query_string, name="query_parser"))
         state.version += 1
         state.timestamp = datetime.now(timezone.utc)
-        print(f"goto: {goto}")
+        goto = "conversationalist"
+        logger.info(f"Query parsed successfully, proceeding to: {goto}")
+        
         return Command(
             update={
                 "messages": messages,
                 "version": state.version,
                 "timestamp": state.timestamp.isoformat(),
-                "resources": state.resources if state.resources else default_resource_box()
+                "resources": get_resource(state)
             },
             goto=goto
         )
     except Exception as e:
-        messages.append(HumanMessage(content=f"I am sorry, I am unable to retrieve the information. Please try again later. You can visit the website for more information.", name = "query_parser"))
-        print(f"Redirecting to validator because an error occurred while parsing the query: {e}")
+        error_details = traceback.format_exc()
+        logger.error(f"Error in query_parser_node: {str(e)}")
+        logger.debug(f"Error details: {error_details}")
+        
+        # Create a user-friendly error message
+        user_message = "I am sorry, I am unable to process your query at this time. Please try again later."
+        # Add more specific information for common errors
+        if "connection" in str(e).lower() or "timeout" in str(e).lower():
+            user_message = "I'm having trouble connecting to the database. Please try again in a few moments."
+        elif "invalid" in str(e).lower() or "format" in str(e).lower():
+            user_message = "I had trouble understanding your query format. Could you please rephrase it?"
+        
+        messages.append(AIMessage(content=user_message, name="query_parser"))
+        logger.info(f"Redirecting to {goto} due to error")
+        
         return Command(
             update={
                 "messages": messages,
                 "version": state.version,
                 "timestamp": state.timestamp.isoformat(),
-                "resources": state.resources if state.resources else default_resource_box()
+                "resources": get_resource(state)
             },
-            goto="validator"
+            goto=goto
         )
 
 

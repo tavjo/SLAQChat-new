@@ -3,24 +3,22 @@
 import sys
 import os
 import time
+import logging
 
 # Add the project root directory to the Python path
 project_root = os.path.abspath(os.path.join(os.path.dirname(__file__), '../../..'))
 sys.path.append(project_root)
 
-# from backend.Tools.services.sample_service import *
 from backend.Tools.services.module_to_json import functions_to_json
 
-from src.chatbot.studio.helpers import update_resource, default_resource_box, update_messages, async_navigator_handler
+from src.chatbot.studio.helpers import update_resource, get_resource, async_navigator_handler
 import asyncio
-from langchain_core.messages import HumanMessage, SystemMessage
+from langchain_core.messages import HumanMessage, AIMessage
 from src.chatbot.studio.models import ConversationState, ToolResponse, ResourceBox, DBSchema, Table, Column, ParsedQuery
-from src.chatbot.studio.helpers import create_worker, create_tool_call_node #, create_agent
+from src.chatbot.studio.helpers import create_tool_call_node 
 from langgraph.types import Command
 from typing_extensions import Literal
-# from langchain_openai import ChatOpenAI
-# from langgraph.prebuilt import create_react_agent
-from datetime import datetime, timezone
+# from datetime import datetime, timezone
 from dotenv import load_dotenv
 
 load_dotenv()
@@ -29,6 +27,13 @@ from src.chatbot.studio.prompts import TOOLSET2, INITIAL_STATE
 TOOL_DISPATCH = {
     attr.__name__: attr for attr in TOOLSET2
 }
+
+# Configure logger
+logger = logging.getLogger(__name__)
+logging.basicConfig(
+    level=logging.INFO,
+    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
+)
 
 async def multi_sample_info(state: ConversationState = INITIAL_STATE)->ToolResponse:
     """
@@ -52,63 +57,92 @@ async def multi_sample_info(state: ConversationState = INITIAL_STATE)->ToolRespo
     try:
         # Call the async navigator handler
         next_tool, tool_args, justification, explanation = await async_navigator_handler(AGENT, state)
-        print(f"Justification: {justification}\nExplanation: {explanation}")
+        logger.info(f"Justification: {justification}")
+        logger.info(f"Explanation: {explanation}")
         if tool_args:
-            print(f"Tool args: {tool_args}")
-        if next_tool ==  "get_metadata_by_uids":
+            logger.debug(f"Tool args: {tool_args}")
+        
+        if next_tool == "get_metadata_by_uids":
             resource_type = "sample_metadata"
             tool_args = (tool_args.uid)
-            print(f"Executing {next_tool} with args: {tool_args}")
+            logger.info(f"Executing {next_tool} with args: {tool_args}")
             result = await TOOL_DISPATCH[next_tool](tool_args)
         elif next_tool == "get_uids_by_terms_and_field":
             resource_type = "UIDs"
             tool_args = (tool_args.key_string, tool_args.terms)
-            print(f"Executing {next_tool} with args: {tool_args}")
+            logger.info(f"Executing {next_tool} with args: {tool_args}")
             result = await TOOL_DISPATCH[next_tool](*tool_args)
         elif next_tool == "" and len(tool_args) == 0:
+            logger.warning("No tool was selected. Invalid query.")
             response = ToolResponse(
-                result=state.resources if state.resources else default_resource_box(),
+                result=get_resource(state),
                 response="No tool was selected. Invalid query.",
                 agent=agent,
                 justification=justification,
                 explanation=explanation
             )
             return response
+        else:
+            logger.warning(f"Unknown tool: {next_tool}")
+            return ToolResponse(
+                result=get_resource(state),
+                response=f"Unknown tool: {next_tool}",
+                agent=agent,
+                justification=justification,
+                explanation=explanation
+            )
                 
         if result and result is not None:
             new_resource = {
                 resource_type: result,
             }
             update_resource(state, new_resource)
-            print(f"Updated resource: {state.resources}")
+            logger.debug(f"Updated resource: {get_resource(state)}")
 
             response = ToolResponse(
-                result=state.resources if state.resources else default_resource_box(),
+                result=get_resource(state),
                 response=f"The {next_tool} tool has been executed successfully. The result is: ```json\n{result}\n```",
                 agent=agent,
                 justification=justification,
                 explanation=explanation)
-            # msg = [HumanMessage(content = response["result"] + "\n" + response["justification"] + "\n" + response["explanation"], name = "multi_sample_info_retriever")]
-            # update_messages(state, msg)
-            # print(list(response.keys()))
             return response
         else:
-            print(f"No result from {next_tool}")
+            logger.warning(f"No result from {next_tool}")
             return ToolResponse(
-            result=state.resources if state.resources else default_resource_box(),
-            response=f"No result was returned from {next_tool}",
+                result=get_resource(state),
+                response=f"No result was returned from {next_tool}",
+                agent=agent,
+                justification=justification,
+                explanation=explanation
+            )
+    except KeyError as e:
+        error_msg = f"Key error in tool dispatch or arguments: {e}"
+        logger.error(error_msg)
+        return ToolResponse(
+            result=get_resource(state),
+            response=error_msg,
             agent=agent,
-            justification=justification,
-            explanation=explanation
+            justification="Error in tool execution",
+            explanation=f"An error occurred while trying to access a key: {e}"
+        )
+    except AttributeError as e:
+        error_msg = f"Attribute error in tool arguments: {e}"
+        logger.error(error_msg)
+        return ToolResponse(
+            result=get_resource(state),
+            response=error_msg,
+            agent=agent,
+            justification="Error in tool execution",
+            explanation=f"An error occurred while trying to access an attribute: {e}"
         )
     except Exception as e:
-        print(f"An error occurred: {e}")
+        logger.exception(f"Unexpected error in multi_sample_info: {e}")
         return ToolResponse(
-            result=state.resources if state.resources else default_resource_box(),
+            result=get_resource(state),
             response=f"An error occurred: {e}",
             agent=agent,
-            justification=justification,
-            explanation=explanation
+            justification="Error in tool execution",
+            explanation=f"An unexpected error occurred: {str(e)}"
         )
 
 async def multi_sample_info_retriever_node(state: ConversationState = INITIAL_STATE, tools = TOOLSET2, func = multi_sample_info)-> Command[Literal["supervisor", "validator"]]:
@@ -127,45 +161,7 @@ async def multi_sample_info_retriever_node(state: ConversationState = INITIAL_ST
         Exception: If any error occurs during the execution of the worker or invocation.
     """
     return await create_tool_call_node(state,tools,func,"multi_sample_info_retriever")
-    # try:
-    #     start_time = time.time()
-    #     print("Creating worker...")
-    #     multi_sample_info_retriever = await create_worker(tools,func)
-    #     print(f"Worker created in {time.time() - start_time:.2f} seconds.")
 
-    #     start_time = time.time()
-    #     print("Invoking multi_sample_info_retriever...")
-    #     result = await multi_sample_info_retriever.ainvoke(state)
-    #     print(f"Invocation completed in {time.time() - start_time:.2f} seconds.")
-    #     print(result)
-    #     updated_messages = state.messages.append(HumanMessage(content=result["messages"][0].content, name="multi_sample_info_retriever"))
-    #     # Update resources if the result contains a new_resource key
-    #     if 'resources' in result:
-    #         update_resource(state, result['resources'])
-        
-    #     print(f"Updated resources: {state.resources}")
-    #     state.version += 1
-    #     state.timestamp = datetime.now(timezone.utc)
-    #     return Command(
-    #         update={
-    #             "messages": updated_messages,
-    #             "version": state.version,
-    #             "timestamp": state.timestamp.isoformat()
-    #         },
-    #         goto="supervisor",
-    #     )
-    # except Exception as e:
-    #     error_msg = f"An error occurred while retrieving sample information: {e}"
-    #     updated_messages = state.messages.append(HumanMessage(content=error_msg, name="multi_sample_info_retriever"))
-    #     print(error_msg)
-    #     return Command(
-    #         update={
-    #             "messages": updated_messages,
-    #             "version": state.version,
-    #             "timestamp": state.timestamp.isoformat()
-    #         },
-    #         goto="validator",
-    #     )
     
 
 if __name__ == "__main__":
@@ -174,7 +170,7 @@ if __name__ == "__main__":
         "messages": [
         # HumanMessage(content="Can you please list all the samples associated with the following scientist: 'Patricia Grace'?", name='user'),
         HumanMessage(content="What is the genotype for the mice with these UIDs: 'MUS-220124FOR-1' and 'MUS-220124FOR-73'?", name = 'user'),
-        HumanMessage(content="Parsed User Query: ```json{'uid': ['MUS-220124FOR-1', 'MUS-220124FOR-73'], 'sampletype': 'mouse', 'assay': None, 'attribute': 'genotype', 'terms': None}```Justification: The query explicitly mentions UIDs, which are identifiers for specific samples, in this case, mice. The user is interested in the 'genotype' attribute of these samples, as indicated by the phrase 'What is the genotype'. The sample type is inferred to be 'mouse' based on the context of the UIDs and the mention of 'mice'. Explanation: The user query is asking for the genotype of specific mice identified by their UIDs. The UIDs provided are 'MUS-220124FOR-1' and 'MUS-220124FOR-73'. The query is focused on the 'genotype' attribute of these mice.", name = "query_parser")
+        AIMessage(content="Parsed User Query: ```json{'uid': ['MUS-220124FOR-1', 'MUS-220124FOR-73'], 'sampletype': 'mouse', 'assay': None, 'attribute': 'genotype', 'terms': None}```Justification: The query explicitly mentions UIDs, which are identifiers for specific samples, in this case, mice. The user is interested in the 'genotype' attribute of these samples, as indicated by the phrase 'What is the genotype'. The sample type is inferred to be 'mouse' based on the context of the UIDs and the mention of 'mice'. Explanation: The user query is asking for the genotype of specific mice identified by their UIDs. The UIDs provided are 'MUS-220124FOR-1' and 'MUS-220124FOR-73'. The query is focused on the 'genotype' attribute of these mice.", name = "query_parser")
         ],
         "resources": ResourceBox(
             sample_metadata=None, 
@@ -187,8 +183,6 @@ if __name__ == "__main__":
         )
         # HumanMessage(content='Scientist', name='schema_mapper')],
     }
-    # update_messages(INITIAL_STATE, initial_state["messages"])
-    # update_resource(INITIAL_STATE, initial_state["resources"])
     INITIAL_STATE.messages.extend(initial_state["messages"])
     INITIAL_STATE.resources = initial_state["resources"]
 

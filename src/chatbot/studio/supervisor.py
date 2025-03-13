@@ -1,5 +1,5 @@
 import logging
-from langchain_core.messages import HumanMessage, SystemMessage
+from langchain_core.messages import HumanMessage, AIMessage
 import sys
 import os
 import time
@@ -12,7 +12,7 @@ sys.path.append(project_root)
 from typing_extensions import Literal
 from langgraph.types import Command
 from src.chatbot.studio.models import ConversationState
-from src.chatbot.studio.helpers import get_resource, default_resource_box, get_available_workers, update_available_workers, update_messages
+from src.chatbot.studio.helpers import get_resource, get_available_workers, update_available_workers
 
 from src.chatbot.studio.prompts import (
     WORK_GROUP_A,
@@ -53,7 +53,7 @@ def supervisor_node(state: ConversationState = INITIAL_STATE) -> Command[Literal
                 "system_message": messages[0].content,
                 "user_query": messages[1].content,
                 "aggregatedMessages": [msg.content for msg in messages],
-                "resource": state.resources if state.resources else default_resource_box()
+                "resource": get_resource(state)
             }
             logger.debug("Payload created successfully")
         except IndexError as e:
@@ -83,11 +83,11 @@ def supervisor_node(state: ConversationState = INITIAL_STATE) -> Command[Literal
         
         if goto == "responder":
             logger.debug("Adding responder messages")
-            updated_messages = [HumanMessage(content=response.justification, name="supervisor")] + [HumanMessage(content=messages[-1].content, name="supervisor")]
+            updated_messages = [AIMessage(content=response.justification, name="supervisor")] + [AIMessage(content=messages[-1].content, name="supervisor")]
             messages.extend(updated_messages)
         else:
             logger.debug("Adding supervisor justification message")
-            messages.append(HumanMessage(content=response.justification, name="supervisor"))
+            messages.append(AIMessage(content=response.justification, name="supervisor"))
         
         if goto == "multi_sample_info_retriever":
             logger.info("Redirecting from multi_sample_info_retriever to schema_retriever")
@@ -106,7 +106,7 @@ def supervisor_node(state: ConversationState = INITIAL_STATE) -> Command[Literal
                 "available_workers": state.available_workers,
                 "version": state.version,
                 "timestamp": state.timestamp.isoformat(),
-                "resources": state.resources if state.resources else default_resource_box()
+                "resources": get_resource(state)
             },
             goto=goto
         )
@@ -116,7 +116,7 @@ def supervisor_node(state: ConversationState = INITIAL_STATE) -> Command[Literal
         logger.error(f"Supervisor error: {str(e)}\n{error_details}")
         
         try:
-            messages.append(HumanMessage(content=error_message, name="supervisor"))
+            messages.append(AIMessage(content=error_message, name="supervisor"))
             state.version += 1
             state.timestamp = datetime.now(timezone.utc)
         except Exception as nested_e:
@@ -127,7 +127,7 @@ def supervisor_node(state: ConversationState = INITIAL_STATE) -> Command[Literal
                 "messages": messages,
                 "version": state.version,
                 "timestamp": datetime.now(timezone.utc),
-                "resources": state.resources if state.resources else default_resource_box()
+                "resources": get_resource(state)
             },
             goto="validator"
         )
@@ -139,7 +139,7 @@ if __name__ == "__main__":
         "messages": [
         # HumanMessage(content="Can you please list all the samples associated with the following scientist: 'Patricia Grace'?", name='user'),
         HumanMessage(content="What is the genotype for the mice with these UIDs: 'MUS-220124FOR-1' and 'MUS-220124FOR-73'?", name = 'user'),
-        HumanMessage(content="Parsed User Query: ```json{'uid': ['MUS-220124FOR-1', 'MUS-220124FOR-73'], 'sampletype': 'mouse', 'assay': None, 'attribute': 'genotype', 'terms': None}```Justification: The query explicitly mentions UIDs, which are identifiers for specific samples, in this case, mice. The user is interested in the 'genotype' attribute of these samples, as indicated by the phrase 'What is the genotype'. The sample type is inferred to be 'mouse' based on the context of the UIDs and the mention of 'mice'. Explanation: The user query is asking for the genotype of specific mice identified by their UIDs. The UIDs provided are 'MUS-220124FOR-1' and 'MUS-220124FOR-73'. The query is focused on the 'genotype' attribute of these mice.", name = "query_parser")
+        AIMessage(content="Parsed User Query: ```json{'uid': ['MUS-220124FOR-1', 'MUS-220124FOR-73'], 'sampletype': 'mouse', 'assay': None, 'attribute': 'genotype', 'terms': None}```Justification: The query explicitly mentions UIDs, which are identifiers for specific samples, in this case, mice. The user is interested in the 'genotype' attribute of these samples, as indicated by the phrase 'What is the genotype'. The sample type is inferred to be 'mouse' based on the context of the UIDs and the mention of 'mice'. Explanation: The user query is asking for the genotype of specific mice identified by their UIDs. The UIDs provided are 'MUS-220124FOR-1' and 'MUS-220124FOR-73'. The query is focused on the 'genotype' attribute of these mice.", name = "query_parser")
         ],
         # HumanMessage(content='Scientist', name='schema_mapper')],
     }

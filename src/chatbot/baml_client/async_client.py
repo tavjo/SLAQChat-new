@@ -52,7 +52,7 @@ class BamlAsyncClient:
     
     async def Conversationalist(
         self,
-        user_query: str,
+        user_query: str,parsed_query: types.ParsedQuery,
         baml_options: BamlCallOptions = {},
     ) -> types.ChatResponse:
       __tb__ = baml_options.get("tb", None)
@@ -66,7 +66,7 @@ class BamlAsyncClient:
       raw = await self.__runtime.call_function(
         "Conversationalist",
         {
-          "user_query": user_query,
+          "user_query": user_query,"parsed_query": parsed_query,
         },
         self.__ctx_manager.get(),
         tb,
@@ -288,7 +288,7 @@ class BamlStreamClient:
     
     def Conversationalist(
         self,
-        user_query: str,
+        user_query: str,parsed_query: types.ParsedQuery,
         baml_options: BamlCallOptions = {},
     ) -> baml_py.BamlStream[partial_types.ChatResponse, types.ChatResponse]:
       __tb__ = baml_options.get("tb", None)
@@ -303,6 +303,7 @@ class BamlStreamClient:
         "Conversationalist",
         {
           "user_query": user_query,
+          "parsed_query": parsed_query,
         },
         None,
         self.__ctx_manager.get(),
