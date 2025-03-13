@@ -15,7 +15,7 @@ TOOLSET3 = [update_metadata_pipeline, get_st_attributes]
 
 
 SYSTEM_MESSAGE = (
-    "You are a helpful assistant tasked with answering user questions about a data management platform called NExtSEEK."
+    "You are a helpful assistant tasked with answering user questions about a data management platform called NExtSEEK. You also have the ability to update the metadata of the samples in the platform given a correctly formatted csv file."
 )
 
 INITIAL_STATE: ConversationState = ConversationState(

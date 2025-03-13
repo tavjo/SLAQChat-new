@@ -12,11 +12,11 @@ from dotenv import load_dotenv
 import asyncio
 import sys,os
 # import time
-from datetime import datetime, timezone
+# from datetime import datetime, timezone
 from copy import deepcopy
 import aiohttp  # Add this import for async HTTP requests
 import uuid
-
+import pandas as pd
 
 # Add the project root directory to the Python path
 project_root = os.path.abspath(os.path.join(os.path.dirname(__file__), '../..'))
@@ -28,19 +28,22 @@ load_dotenv()
 os.environ["OPENAI_API_KEY"] = os.getenv("OPENAI_API_KEY")
 output_dir = os.path.join(project_root, "src/chatbot/assets/")
 
+def check_uploaded_file():
+    if os.path.exists(os.path.join(output_dir, "input.csv")):
+        # make sure first column is UID
+        df = pd.read_csv(os.path.join(output_dir, "input.csv"))
+        if df.columns[0] != "UID":
+            st.error("First column must be UID")
+            return False
+        return True
+    else:
+        st.error("No file uploaded")
+        return False
 
 
 def setup_ui():
     st.title("💬 NExtSEEK-Chat")
     st.caption("🚀 Interact with the NExtSEEK AI assistant to answer questions about your data.")
-
-        # Initialize session state for conversation
-    if "conversation" not in st.session_state:
-        st.session_state.conversation = []
-
-    # Display existing conversation
-    for speaker, message in st.session_state.conversation:
-        st.chat_message(speaker.lower()).write(message)
 
     # File uploader widget for CSV files
     uploaded_file = st.file_uploader("Upload a CSV file", type="csv", key="csv_upload")
@@ -49,6 +52,14 @@ def setup_ui():
         with open(os.path.join(output_dir, "input.csv"), "wb") as f:
             f.write(uploaded_file.getbuffer())
         st.success("File uploaded and saved as input.csv")
+    
+    # Initialize session state for conversation
+    if "conversation" not in st.session_state:
+        st.session_state.conversation = []
+
+    # Display existing conversation
+    for speaker, message in st.session_state.conversation:
+        st.chat_message(speaker.lower()).write(message)
 
     if "session_id" not in st.session_state:
         st.session_state.session_id = str(uuid.uuid4())
@@ -90,11 +101,18 @@ def display_ai_response(result):
     if result["messages"]:
         ai_message = result["messages"][-1].content
         st.session_state.conversation.append(("SLAQ", ai_message))
+        clear_assets()
         return st.chat_message("assistant").write(ai_message)
     else:
         error_message = "Error: No valid response received."
         st.session_state.conversation.append(("SLAQ", error_message))
+        clear_assets()
         return st.chat_message("assistant").write(error_message)
+    
+# clear assets folder once conversation is complete
+def clear_assets():
+    if os.path.exists(os.path.join(output_dir, "input.csv")):
+        os.remove(os.path.join(output_dir, "input.csv"))
 
 async def run_all():
     user_input, session_id = setup_ui()
@@ -103,7 +121,9 @@ async def run_all():
         display_user_input(user_input)
         result = await run_agent_chatbot(user_input)
     if result:
-        display_ai_response(result)        
+        display_ai_response(result)
+    clear_assets()
+
 
 if __name__ == "__main__":
     asyncio.run(run_all())

@@ -23,6 +23,7 @@ function Conversationalist(user_query: string, parsed_query: ParsedQuery) -> Cha
         If it is, set retrieve_info to true and return the user_query, your justification, and the response should be null.
         If it is not, set retrieve_info to false and return the user_query, your justification, and the response should be a friendly and helpful reply to the user's query.
         Do not make up information. If you do not know the answer, set retrieve_info to 'true' in order to start the process for retrieving information from the database.
+        If the user asks to update the metadata of the samples, set retrieve_info to true and return the user_query, your justification, and the response should be null.
         \nImportant: If the user's query is not related to NExtSEEK or data management, set retrieve_info to false and return the user_query, your justification, and the response should be a friendly reply to the user outlining your role. 
         {{ ctx.output_format }}
     "#
