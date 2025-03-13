@@ -33,7 +33,7 @@ OutputType = TypeVar('OutputType')
 class BamlCallOptions(TypedDict, total=False):
     tb: NotRequired[TypeBuilder]
     client_registry: NotRequired[baml_py.baml_py.ClientRegistry]
-
+    collector: NotRequired[Union[baml_py.baml_py.Collector, List[baml_py.baml_py.Collector]]]
 class BamlAsyncClient:
     __runtime: baml_py.BamlRuntime
     __ctx_manager: baml_py.BamlCtxManager
@@ -61,7 +61,8 @@ class BamlAsyncClient:
       else:
         tb = None
       __cr__ = baml_options.get("client_registry", None)
-
+      collector = baml_options.get("collector", None)
+      collectors = collector if isinstance(collector, list) else [collector] if collector is not None else []
       raw = await self.__runtime.call_function(
         "Conversationalist",
         {
@@ -70,6 +71,7 @@ class BamlAsyncClient:
         self.__ctx_manager.get(),
         tb,
         __cr__,
+        collectors,
       )
       return cast(types.ChatResponse, raw.cast_to(types, types, partial_types, False))
     
@@ -84,7 +86,8 @@ class BamlAsyncClient:
       else:
         tb = None
       __cr__ = baml_options.get("client_registry", None)
-
+      collector = baml_options.get("collector", None)
+      collectors = collector if isinstance(collector, list) else [collector] if collector is not None else []
       raw = await self.__runtime.call_function(
         "FormatResponse",
         {
@@ -93,6 +96,7 @@ class BamlAsyncClient:
         self.__ctx_manager.get(),
         tb,
         __cr__,
+        collectors,
       )
       return cast(types.ResponseFormatter, raw.cast_to(types, types, partial_types, False))
     
@@ -107,7 +111,8 @@ class BamlAsyncClient:
       else:
         tb = None
       __cr__ = baml_options.get("client_registry", None)
-
+      collector = baml_options.get("collector", None)
+      collectors = collector if isinstance(collector, list) else [collector] if collector is not None else []
       raw = await self.__runtime.call_function(
         "Navigate",
         {
@@ -116,6 +121,7 @@ class BamlAsyncClient:
         self.__ctx_manager.get(),
         tb,
         __cr__,
+        collectors,
       )
       return cast(types.Navigator, raw.cast_to(types, types, partial_types, False))
     
@@ -130,7 +136,8 @@ class BamlAsyncClient:
       else:
         tb = None
       __cr__ = baml_options.get("client_registry", None)
-
+      collector = baml_options.get("collector", None)
+      collectors = collector if isinstance(collector, list) else [collector] if collector is not None else []
       raw = await self.__runtime.call_function(
         "ParseQuery",
         {
@@ -139,6 +146,7 @@ class BamlAsyncClient:
         self.__ctx_manager.get(),
         tb,
         __cr__,
+        collectors,
       )
       return cast(types.QueryParser, raw.cast_to(types, types, partial_types, False))
     
@@ -153,7 +161,8 @@ class BamlAsyncClient:
       else:
         tb = None
       __cr__ = baml_options.get("client_registry", None)
-
+      collector = baml_options.get("collector", None)
+      collectors = collector if isinstance(collector, list) else [collector] if collector is not None else []
       raw = await self.__runtime.call_function(
         "Respond",
         {
@@ -162,12 +171,13 @@ class BamlAsyncClient:
         self.__ctx_manager.get(),
         tb,
         __cr__,
+        collectors,
       )
       return cast(types.Responder, raw.cast_to(types, types, partial_types, False))
     
     async def RetrieveSchema(
         self,
-        user_query: str,db_schema: types.Schema,parsed_query: types.ParsedQuery,
+        user_query: str,db_schema: types.DBSchema,parsed_query: types.ParsedQuery,
         baml_options: BamlCallOptions = {},
     ) -> types.SchemaMapper:
       __tb__ = baml_options.get("tb", None)
@@ -176,7 +186,8 @@ class BamlAsyncClient:
       else:
         tb = None
       __cr__ = baml_options.get("client_registry", None)
-
+      collector = baml_options.get("collector", None)
+      collectors = collector if isinstance(collector, list) else [collector] if collector is not None else []
       raw = await self.__runtime.call_function(
         "RetrieveSchema",
         {
@@ -185,6 +196,7 @@ class BamlAsyncClient:
         self.__ctx_manager.get(),
         tb,
         __cr__,
+        collectors,
       )
       return cast(types.SchemaMapper, raw.cast_to(types, types, partial_types, False))
     
@@ -199,7 +211,8 @@ class BamlAsyncClient:
       else:
         tb = None
       __cr__ = baml_options.get("client_registry", None)
-
+      collector = baml_options.get("collector", None)
+      collectors = collector if isinstance(collector, list) else [collector] if collector is not None else []
       raw = await self.__runtime.call_function(
         "SummarizeData",
         {
@@ -208,6 +221,7 @@ class BamlAsyncClient:
         self.__ctx_manager.get(),
         tb,
         __cr__,
+        collectors,
       )
       return cast(types.DataSummarizer, raw.cast_to(types, types, partial_types, False))
     
@@ -222,7 +236,8 @@ class BamlAsyncClient:
       else:
         tb = None
       __cr__ = baml_options.get("client_registry", None)
-
+      collector = baml_options.get("collector", None)
+      collectors = collector if isinstance(collector, list) else [collector] if collector is not None else []
       raw = await self.__runtime.call_function(
         "Supervise",
         {
@@ -231,6 +246,7 @@ class BamlAsyncClient:
         self.__ctx_manager.get(),
         tb,
         __cr__,
+        collectors,
       )
       return cast(types.Supervisor, raw.cast_to(types, types, partial_types, False))
     
@@ -245,7 +261,8 @@ class BamlAsyncClient:
       else:
         tb = None
       __cr__ = baml_options.get("client_registry", None)
-
+      collector = baml_options.get("collector", None)
+      collectors = collector if isinstance(collector, list) else [collector] if collector is not None else []
       raw = await self.__runtime.call_function(
         "ValidateResponse",
         {
@@ -254,6 +271,7 @@ class BamlAsyncClient:
         self.__ctx_manager.get(),
         tb,
         __cr__,
+        collectors,
       )
       return cast(types.Validator, raw.cast_to(types, types, partial_types, False))
     
@@ -279,7 +297,8 @@ class BamlStreamClient:
       else:
         tb = None
       __cr__ = baml_options.get("client_registry", None)
-
+      collector = baml_options.get("collector", None)
+      collectors = collector if isinstance(collector, list) else [collector] if collector is not None else []
       raw = self.__runtime.stream_function(
         "Conversationalist",
         {
@@ -289,6 +308,7 @@ class BamlStreamClient:
         self.__ctx_manager.get(),
         tb,
         __cr__,
+        collectors,
       )
 
       return baml_py.BamlStream[partial_types.ChatResponse, types.ChatResponse](
@@ -309,7 +329,8 @@ class BamlStreamClient:
       else:
         tb = None
       __cr__ = baml_options.get("client_registry", None)
-
+      collector = baml_options.get("collector", None)
+      collectors = collector if isinstance(collector, list) else [collector] if collector is not None else []
       raw = self.__runtime.stream_function(
         "FormatResponse",
         {
@@ -319,6 +340,7 @@ class BamlStreamClient:
         self.__ctx_manager.get(),
         tb,
         __cr__,
+        collectors,
       )
 
       return baml_py.BamlStream[partial_types.ResponseFormatter, types.ResponseFormatter](
@@ -339,7 +361,8 @@ class BamlStreamClient:
       else:
         tb = None
       __cr__ = baml_options.get("client_registry", None)
-
+      collector = baml_options.get("collector", None)
+      collectors = collector if isinstance(collector, list) else [collector] if collector is not None else []
       raw = self.__runtime.stream_function(
         "Navigate",
         {
@@ -350,6 +373,7 @@ class BamlStreamClient:
         self.__ctx_manager.get(),
         tb,
         __cr__,
+        collectors,
       )
 
       return baml_py.BamlStream[partial_types.Navigator, types.Navigator](
@@ -370,7 +394,8 @@ class BamlStreamClient:
       else:
         tb = None
       __cr__ = baml_options.get("client_registry", None)
-
+      collector = baml_options.get("collector", None)
+      collectors = collector if isinstance(collector, list) else [collector] if collector is not None else []
       raw = self.__runtime.stream_function(
         "ParseQuery",
         {
@@ -380,6 +405,7 @@ class BamlStreamClient:
         self.__ctx_manager.get(),
         tb,
         __cr__,
+        collectors,
       )
 
       return baml_py.BamlStream[partial_types.QueryParser, types.QueryParser](
@@ -400,7 +426,8 @@ class BamlStreamClient:
       else:
         tb = None
       __cr__ = baml_options.get("client_registry", None)
-
+      collector = baml_options.get("collector", None)
+      collectors = collector if isinstance(collector, list) else [collector] if collector is not None else []
       raw = self.__runtime.stream_function(
         "Respond",
         {
@@ -411,6 +438,7 @@ class BamlStreamClient:
         self.__ctx_manager.get(),
         tb,
         __cr__,
+        collectors,
       )
 
       return baml_py.BamlStream[partial_types.Responder, types.Responder](
@@ -422,7 +450,7 @@ class BamlStreamClient:
     
     def RetrieveSchema(
         self,
-        user_query: str,db_schema: types.Schema,parsed_query: types.ParsedQuery,
+        user_query: str,db_schema: types.DBSchema,parsed_query: types.ParsedQuery,
         baml_options: BamlCallOptions = {},
     ) -> baml_py.BamlStream[partial_types.SchemaMapper, types.SchemaMapper]:
       __tb__ = baml_options.get("tb", None)
@@ -431,7 +459,8 @@ class BamlStreamClient:
       else:
         tb = None
       __cr__ = baml_options.get("client_registry", None)
-
+      collector = baml_options.get("collector", None)
+      collectors = collector if isinstance(collector, list) else [collector] if collector is not None else []
       raw = self.__runtime.stream_function(
         "RetrieveSchema",
         {
@@ -443,6 +472,7 @@ class BamlStreamClient:
         self.__ctx_manager.get(),
         tb,
         __cr__,
+        collectors,
       )
 
       return baml_py.BamlStream[partial_types.SchemaMapper, types.SchemaMapper](
@@ -463,7 +493,8 @@ class BamlStreamClient:
       else:
         tb = None
       __cr__ = baml_options.get("client_registry", None)
-
+      collector = baml_options.get("collector", None)
+      collectors = collector if isinstance(collector, list) else [collector] if collector is not None else []
       raw = self.__runtime.stream_function(
         "SummarizeData",
         {
@@ -473,6 +504,7 @@ class BamlStreamClient:
         self.__ctx_manager.get(),
         tb,
         __cr__,
+        collectors,
       )
 
       return baml_py.BamlStream[partial_types.DataSummarizer, types.DataSummarizer](
@@ -493,7 +525,8 @@ class BamlStreamClient:
       else:
         tb = None
       __cr__ = baml_options.get("client_registry", None)
-
+      collector = baml_options.get("collector", None)
+      collectors = collector if isinstance(collector, list) else [collector] if collector is not None else []
       raw = self.__runtime.stream_function(
         "Supervise",
         {
@@ -504,6 +537,7 @@ class BamlStreamClient:
         self.__ctx_manager.get(),
         tb,
         __cr__,
+        collectors,
       )
 
       return baml_py.BamlStream[partial_types.Supervisor, types.Supervisor](
@@ -524,7 +558,8 @@ class BamlStreamClient:
       else:
         tb = None
       __cr__ = baml_options.get("client_registry", None)
-
+      collector = baml_options.get("collector", None)
+      collectors = collector if isinstance(collector, list) else [collector] if collector is not None else []
       raw = self.__runtime.stream_function(
         "ValidateResponse",
         {
@@ -534,6 +569,7 @@ class BamlStreamClient:
         self.__ctx_manager.get(),
         tb,
         __cr__,
+        collectors,
       )
 
       return baml_py.BamlStream[partial_types.Validator, types.Validator](

@@ -59,6 +59,9 @@ class Column(BaseModel):
     default: Optional[str] = None
     json_keys: Optional[List[str]] = None
 
+class DBSchema(BaseModel):
+    tables: List["Table"]
+
 class DataSummarizer(BaseModel):
     summary: str
     messages: "Payload"
@@ -174,7 +177,7 @@ class ResourceBox(BaseModel):
     protocolURL: Optional[str] = None
     sampleURL: Optional[str] = None
     UIDs: Optional[List[str]] = None
-    db_schema: Optional["Schema"] = None
+    db_schema: Optional["DBSchema"] = None
     parsed_query: Optional["ParsedQuery"] = None
     st_attributes: Union[Optional[List["SampleTypeAttributes"]], "SampleTypeAttributes"] = None
     update_info: Optional["UpdatePipelineMetadata"] = None
@@ -194,13 +197,10 @@ class SampleTypeAttributes(BaseModel):
     st_description: str
     attributes: List[str]
 
-class Schema(BaseModel):
-    tables: List["Table"]
-
 class SchemaMapper(BaseModel):
     name: str
     relevant_keys: List[str]
-    schema_map: "Schema"
+    schema_map: "DBSchema"
     justification: str
     explanation: str
 

@@ -14,7 +14,7 @@ from backend.Tools.services.module_to_json import functions_to_json
 from src.chatbot.studio.helpers import update_resource, default_resource_box, update_messages, async_navigator_handler
 import asyncio
 from langchain_core.messages import HumanMessage, SystemMessage
-from src.chatbot.studio.models import ConversationState, ToolResponse
+from src.chatbot.studio.models import ConversationState, ToolResponse, ResourceBox, DBSchema, Table, Column, ParsedQuery
 from src.chatbot.studio.helpers import create_worker, create_tool_call_node #, create_agent
 from langgraph.types import Command
 from typing_extensions import Literal
@@ -176,11 +176,21 @@ if __name__ == "__main__":
         HumanMessage(content="What is the genotype for the mice with these UIDs: 'MUS-220124FOR-1' and 'MUS-220124FOR-73'?", name = 'user'),
         HumanMessage(content="Parsed User Query: ```json{'uid': ['MUS-220124FOR-1', 'MUS-220124FOR-73'], 'sampletype': 'mouse', 'assay': None, 'attribute': 'genotype', 'terms': None}```Justification: The query explicitly mentions UIDs, which are identifiers for specific samples, in this case, mice. The user is interested in the 'genotype' attribute of these samples, as indicated by the phrase 'What is the genotype'. The sample type is inferred to be 'mouse' based on the context of the UIDs and the mention of 'mice'. Explanation: The user query is asking for the genotype of specific mice identified by their UIDs. The UIDs provided are 'MUS-220124FOR-1' and 'MUS-220124FOR-73'. The query is focused on the 'genotype' attribute of these mice.", name = "query_parser")
         ],
+        "resources": ResourceBox(
+            sample_metadata=None, 
+            db_schema=DBSchema(tables=[Table(name='seek_production.samples', columns=[Column(name='id', type='INTEGER', nullable=False, default=None, json_keys=None), Column(name='title', type='VARCHAR(255)', nullable=True, default=None, json_keys=None), Column(name='sample_type_id', type='INTEGER', nullable=True, default=None, json_keys=None), Column(name='json_metadata', type='TEXT', nullable=True, default=None, json_keys=['Concentration', 'Substrain', 'CellLineage', 'Notes', 'QC', 'ReagenCatalogNum', 'Reference', 'Type', 'Genotype', 'ValidationMethod', 'Publish_uri', 'TreatmentTime', 'Catalog#', 'RepositoryID', 'TotalProteinUnits', 'VolumeUnits', 'OrganDetail', 'Media', 'AntibodyParent', 'InstrumentUser', 'CollectionTime', 'Timepoint', 'Protocol_Stimulation', 'TreatmentTimeUnits', 'Checksum_PrimaryType', 'FlowAmountUnits', 'TreatmentDoseUnits', 'Treatment1Reference', 'StorageLocation', 'File_PrimaryData', 'Qtag', 'StorageSite', 'StorageTemperatureUnits', 'TreatmentDose', 'ReagentManufacturer', 'ValidationQuality', 'Protocol_Treatment', 'Treatment1Dose', 'Treatment2Reference', 'ODFrozen', 'Stain', 'Protocol', 'FMO', 'QC_notes', 'TotalProtein', 'Scientist', 'Treatment2DoseUnits', 'Treatment', 'UID', 'Note', 'TaxonomyID', 'Link_PrimaryData', 'Vendor', 'ConcentrationUnits', 'Checksum_PrimaryData', 'GramStaining', 'NumAliquot', 'Link_Sequence', 'BiosafetyLevel', 'Instrument', 'SampleCreationDate', 'Fixative', 'Lab', 'ODWavelength', 'PassageNum', 'TreatmentRoute', 'CellCount', 'TreatmentDoseTime', 'Repository', 'Reagent', 'BioSampleAccession', 'Name', 'Fixation', 'Species', 'Treatment2Dose', 'SourceFacility', 'StorageTemperature', 'Treatment1', 'SEEKSubmissionDate', 'Software', 'StorageType', 'CellLine', 'CollectionTimeUnits', 'Volume', 'Source', 'Organ', 'Morphology', 'InoculumPrep', 'Strain', 'TreatmentType', 'Treatment2', 'Phenotype', 'CompensationFCSParent', 'SubstrainReference', 'Path_PrimaryData', 'ReagentBrand', 'Culture', 'Treatment1DoseUnits', 'Parent', 'Stimulation', 'Barcode', 'FlowAmount']), Column(name='uuid', type='VARCHAR(255)', nullable=True, default=None, json_keys=None), Column(name='contributor_id', type='INTEGER', nullable=True, default=None, json_keys=None), Column(name='policy_id', type='INTEGER', nullable=True, default=None, json_keys=None), Column(name='created_at', type='DATETIME', nullable=False, default=None, json_keys=None), Column(name='updated_at', type='DATETIME', nullable=False, default=None, json_keys=None), Column(name='first_letter', type='VARCHAR(1)', nullable=True, default=None, json_keys=None), Column(name='other_creators', type='TEXT', nullable=True, default=None, json_keys=None), Column(name='originating_data_file_id', type='INTEGER', nullable=True, default=None, json_keys=None), Column(name='deleted_contributor', type='VARCHAR(255)', nullable=True, default=None, json_keys=None)])]), 
+            parsed_query=ParsedQuery(uid=['MUS-220124FOR-1', 'MUS-220124FOR-73'], sampletype='mouse', assay=None, attribute='genotype', terms=None), st_attributes=None, 
+            update_info=None,
+            protocolURL=None, 
+            sampleURL=None, 
+            UIDs=None
+        )
         # HumanMessage(content='Scientist', name='schema_mapper')],
     }
     # update_messages(INITIAL_STATE, initial_state["messages"])
     # update_resource(INITIAL_STATE, initial_state["resources"])
     INITIAL_STATE.messages.extend(initial_state["messages"])
+    INITIAL_STATE.resources = initial_state["resources"]
 
     results = asyncio.run(multi_sample_info_retriever_node())
     # print(results)

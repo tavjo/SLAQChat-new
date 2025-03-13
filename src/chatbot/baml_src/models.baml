@@ -157,14 +157,14 @@ class Column {
     json_keys string[]? @description("The keys in the JSON column")
 }
 
-class Schema {
+class DBSchema {
     tables Table[] @description("The relevant tables in the database")
 }
 
 class SchemaMapper {
     name string @description("The name of the agent: schema_mapper")
     relevant_keys string[] @description("The relevant keys in the database")
-    schema_map Schema @description("The mapped schema of the database based on the user query")
+    schema_map DBSchema @description("The mapped schema of the database based on the user query")
     justification string @description("The justification for the mapping and proposed query")
     explanation string @description("The explanation for the mapping")
 }
@@ -187,7 +187,7 @@ class ResourceBox {
     protocolURL string? @description("Protocol download URL i.e.: https://nextseek.mit.edu/seek/sop/uid=<protocol_uid>")
     sampleURL string? @description("Sample URL i.e.: https://nextseek.mit.edu/seek/sampletree/uid=<sample_uid>")
     UIDs string[]? @description("List of UIDs")
-    db_schema Schema? @description("A complete or partial schema of the database")
+    db_schema DBSchema? @description("A complete or partial schema of the database")
     parsed_query ParsedQuery? @description("The parsed user query")
     st_attributes SampleTypeAttributes[]? | SampleTypeAttributes? @description("The sample type attributes")
     update_info UpdatePipelineMetadata? @description("The update information")

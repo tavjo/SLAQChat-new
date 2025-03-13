@@ -10,16 +10,17 @@ sys.path.append(project_root)
 from typing_extensions import Literal
 from langgraph.types import Command
 from src.chatbot.baml_client.async_client import b as baml
-from src.chatbot.studio.models import ConversationState
-from src.chatbot.studio.helpers import get_resource
+from src.chatbot.studio.models import ConversationState, ResourceBox, Metadata
+from src.chatbot.studio.helpers import get_resource, default_resource_box
 import asyncio
 from datetime import datetime, timezone
 
 from src.chatbot.studio.prompts import (
-    SYSTEM_MESSAGE
+    SYSTEM_MESSAGE,
+    INITIAL_STATE
 )
 
-async def data_summarizer_node(state: ConversationState) -> Command[Literal["responder", "validator"]]:
+async def data_summarizer_node(state: ConversationState = INITIAL_STATE) -> Command[Literal["responder", "validator"]]:
     """
     Summarizes data based on the current conversation state and updates the conversation flow.
 
@@ -33,11 +34,12 @@ async def data_summarizer_node(state: ConversationState) -> Command[Literal["res
         Exception: If any error occurs during the data summarization process.
     """
     try:
+        messages = state.messages
         payload = {
-            "system_message": SYSTEM_MESSAGE,
-            "user_query": state.messages[1].content,
-            "aggregatedMessages": [msg.content for msg in state.messages],
-            "resource": get_resource(state)
+            "system_message": messages[0].content,
+            "user_query": messages[1].content,
+            "aggregatedMessages": [msg.content for msg in messages],
+            "resource": state.resources if state.resources else default_resource_box()
         }
 
         start_time = time.time()
@@ -81,6 +83,8 @@ if __name__ == "__main__":
             HumanMessage(content="The user is requesting more information about a specific sample identified by its UID (PAV-220630FLY-1031). The most appropriate tool to address this request is 'retrieve_sample_info', as it is designed to retrieve detailed information for a given sample UID.", name = "basic_sample_info_retriever"), 
             HumanMessage(content="The conversation has progressed to the point where the necessary information about the sample has likely been retrieved. The next step is to summarize this information for the user to ensure clarity and readability.", name="responder")
             ],
-        "resources": {'sample_metadata': [{'UID': 'PAV-220630FLY-1031', 'Name': '29518-190327', 'Scientist': 'JoAnne Flynn', 'RecordDate': '', 'Protocol': 'P.FLY-231011-V1_Patient-Visit-CD8.docx', 'Type': 'Scan', 'Procedure': '', 'CollectionTime': '', 'Parent': 'NHP-220630FLY-2', 'VisitFacility': 'Flynn Lab', 'VisitLocation': '', 'Notes': 'P0099', 'Publish_uri': 'https://fairdomhub.org/samples/23142', 'TestType': '', 'TestResult': '', 'TestResultFile': '', 'Coscientist': '', 'ProcedureDuration': '', 'DurationUnits': '', 'SampleCreationDate': '2019-03-27 00:00:00', 'BALInstilledVolume': '', 'BALCollectedVolume': '', 'VolumeUnits': '', 'Treatment1': '', 'Treatment1Type': '', 'Treatment1Route': '', 'Treatment1Dose': '', 'Treatment1DoseUnits': '', 'Treatment2': '', 'Treatment2Type': '', 'Treatment2Route': '', 'Treatment2Dose': '', 'Treatment2DoseUnits': '', 'Treatment3': '', 'Treatment3Type': '', 'Treatment3Route': '', 'Treatment3Dose': '', 'Treatment3DoseUnits': '', 'Treatment4': '', 'Treatment4Type': '', 'Treatment4Route': '', 'Treatment4Dose': '', 'Treatment4DoseUnits': '', 'Treatment5': '', 'Treatment5Type': '', 'Treatment5Route': '', 'Treatment5Dose': '', 'Treatment5DoseUnits': '', 'TestType2': '', 'TestResult2': '', 'TestResultFile2': '', 'TestType3': '', 'TestResult3': '', 'TestResultFile3': '', 'Protocol_Classification': '', 'Classification': '', 'ExperimentalTimepoint': '', 'Treatment1Parent': '', 'Treatment2Parent': '', 'Treatment3Parent': '', 'Treatment4Parent': '', 'Treatment5Parent': '', 'NumInjections': ''}], 'protocolURL': '', 'sampleURL': '', 'UIDs': []}
+        "resources": {'sample_metadata': [{'UID': 'PAV-220630FLY-1031', 'Name': '29518-190327', 'Scientist': 'JoAnne Flynn', 'RecordDate': '', 'Protocol': 'P.FLY-231011-V1_Patient-Visit-CD8.docx', 'Type': 'Scan', 'Procedure': '', 'CollectionTime': '', 'Parent': 'NHP-220630FLY-2', 'VisitFacility': 'Flynn Lab', 'VisitLocation': '', 'Notes': 'P0099', 'Publish_uri': 'https://fairdomhub.org/samples/23142', 'TestType': '', 'TestResult': '', 'TestResultFile': '', 'Coscientist': '', 'ProcedureDuration': '', 'DurationUnits': '', 'SampleCreationDate': '2019-03-27 00:00:00', 'BALInstilledVolume': '', 'BALCollectedVolume': '', 'VolumeUnits': '', 'Treatment1': '', 'Treatment1Type': '', 'Treatment1Route': '', 'Treatment1Dose': '', 'Treatment1DoseUnits': '', 'Treatment2': '', 'Treatment2Type': '', 'Treatment2Route': '', 'Treatment2Dose': '', 'Treatment2DoseUnits': '', 'Treatment3': '', 'Treatment3Type': '', 'Treatment3Route': '', 'Treatment3Dose': '', 'Treatment3DoseUnits': '', 'Treatment4': '', 'Treatment4Type': '', 'Treatment4Route': '', 'Treatment4Dose': '', 'Treatment4DoseUnits': '', 'Treatment5': '', 'Treatment5Type': '', 'Treatment5Route': '', 'Treatment5Dose': '', 'Treatment5DoseUnits': '', 'TestType2': '', 'TestResult2': '', 'TestResultFile2': '', 'TestType3': '', 'TestResult3': '', 'TestResultFile3': '', 'Protocol_Classification': '', 'Classification': '', 'ExperimentalTimepoint': '', 'Treatment1Parent': '', 'Treatment2Parent': '', 'Treatment3Parent': '', 'Treatment4Parent': '', 'Treatment5Parent': '', 'NumInjections': ''}]}
     }
-    asyncio.run(data_summarizer_node(initial_state))
+    INITIAL_STATE.messages.extend(initial_state["messages"])
+    INITIAL_STATE.resources = ResourceBox.model_validate(initial_state["resources"])
+    asyncio.run(data_summarizer_node())

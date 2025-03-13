@@ -1,19 +1,19 @@
 # chatbot_interface.py
 import streamlit as st
-# from studio.sample_retriever import sampleRetrieverGraph
+from studio.sample_retriever import GRAPH
 from langchain_core.messages import HumanMessage
 # from studio.helpers import update_messages, get_messages
-# from studio.prompts import INITIAL_STATE
+from studio.prompts import INITIAL_STATE
 # from langgraph.checkpoint.sqlite.aio import AsyncSqliteSaver
 # checkpoint
 # import aiosqlite
-# from dotenv import load_dotenv
+from dotenv import load_dotenv
 # from langgraph.graph import MessagesState
 import asyncio
 import sys,os
 # import time
 from datetime import datetime, timezone
-# from copy import deepcopy
+from copy import deepcopy
 import aiohttp  # Add this import for async HTTP requests
 import uuid
 
@@ -24,8 +24,8 @@ sys.path.append(project_root)
 
 # from src.chatbot.studio.models import ConversationState
 
-# load_dotenv()
-# os.environ["OPENAI_API_KEY"] = os.getenv("OPENAI_API_KEY")
+load_dotenv()
+os.environ["OPENAI_API_KEY"] = os.getenv("OPENAI_API_KEY")
 output_dir = os.path.join(project_root, "src/chatbot/assets/")
 
 
@@ -56,22 +56,29 @@ def setup_ui():
     user_input = st.chat_input(placeholder="e.g., Tell me more about sample NHP-220630FLY-15?")
     return user_input, st.session_state.session_id
 
-async def run_agent_chatbot(user_input: str, session_id: str):
+# async def run_agent_chatbot(user_input: str, session_id: str):
+#     user_message = HumanMessage(content=user_input, name="User")
+#     delta = {
+#         "session_id": session_id,
+#         "new_message": user_message,
+#         "timestamp": datetime.now(timezone.utc).isoformat()
+#     }
+#     backend_url = "http://127.0.0.1:8000/sampleretriever/invoke"
+#     async with aiohttp.ClientSession() as session:
+#         async with session.post(backend_url, json=delta) as response:
+#             if response.status == 200:
+#                 result = await response.json()
+#                 return result
+#             else:
+#                 st.error(f"Backend error: {response.status}")
+#                 return {}
+
+async def run_agent_chatbot(user_input: str):
     user_message = HumanMessage(content=user_input, name="User")
-    delta = {
-        "session_id": session_id,
-        "new_message": user_message,
-        "timestamp": datetime.now(timezone.utc).isoformat()
-    }
-    backend_url = "http://127.0.0.1:8000/sampleretriever/invoke"
-    async with aiohttp.ClientSession() as session:
-        async with session.post(backend_url, json=delta) as response:
-            if response.status == 200:
-                result = await response.json()
-                return result
-            else:
-                st.error(f"Backend error: {response.status}")
-                return {}
+    fresh_state = deepcopy(INITIAL_STATE)
+    fresh_state.messages.append(user_message)
+    result = await GRAPH.ainvoke(fresh_state)
+    return result
 
 def display_user_input(user_input):
     # Add user input to the conversation state
@@ -80,7 +87,7 @@ def display_user_input(user_input):
 
 def display_ai_response(result):      
     # Extract and display AI response
-    if "messages" in result:
+    if result["messages"]:
         ai_message = result["messages"][-1].content
         st.session_state.conversation.append(("SLAQ", ai_message))
         return st.chat_message("assistant").write(ai_message)
@@ -91,9 +98,10 @@ def display_ai_response(result):
 
 async def run_all():
     user_input, session_id = setup_ui()
+    result = None
     if user_input and session_id:
         display_user_input(user_input)
-        result = await run_agent_chatbot(user_input, session_id)
+        result = await run_agent_chatbot(user_input)
     if result:
         display_ai_response(result)        
 

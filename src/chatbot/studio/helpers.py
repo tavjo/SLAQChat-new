@@ -13,6 +13,7 @@ from langgraph.types import Command
 from typing_extensions import Literal
 from datetime import datetime, timezone
 from langchain_core.messages import HumanMessage
+from backend.Tools.schemas import UpdatePipelineMetadata
 logger = logging.getLogger(__name__)
 
 ########################################################
@@ -29,13 +30,17 @@ def default_resource_box() -> ResourceBox:
         UIDs=None,
         db_schema=None,
         parsed_query=ParsedQuery(uid=[], sampletype=[], assay=[], attribute=[], terms=[]),
-        st_attributes=[SampleTypeAttributes(sampletype="", st_description="", attributes=[])]
+        st_attributes=[SampleTypeAttributes(sampletype="", st_description="", attributes=[])],
+        update_info=UpdatePipelineMetadata(success=False, logs=[], errors=None, stats={})
     )
+
+def populate_update_info(update_info: dict) -> UpdatePipelineMetadata:
+    return UpdatePipelineMetadata.model_validate(update_info)
 
 def populate_toolbox(toolset: list[str]) -> dict[str, ToolMetadata]:
     from src.chatbot.studio.models import ToolMetadata
     toolbox_info = functions_to_json(toolset)
-    print(f"Toolbox info: {toolbox_info}")
+    # print(f"Toolbox info: {toolbox_info}")
     toolbox = {}
     for toolname, toolmetadata in toolbox_info.items():
         toolbox[toolname] = ToolMetadata.model_validate(toolmetadata)
@@ -114,6 +119,9 @@ def update_resource(state: ConversationState, new_resource: dict) -> None:
             elif "st_attributes" in new_resource:
                 logger.debug(f"Processing st_attributes")
                 new_resource_dict["st_attributes"] = populate_sample_type_attributes(new_resource["st_attributes"])
+            elif "update_info" in new_resource:
+                logger.debug(f"Processing update_info")
+                new_resource_dict["update_info"] = populate_update_info(new_resource["update_info"])
             else:
                 logger.debug(f"Using raw new_resource: {list(new_resource.keys())}")
                 new_resource_dict = new_resource
@@ -145,12 +153,28 @@ def update_resource(state: ConversationState, new_resource: dict) -> None:
         # Re-raise the exception after logging it
         raise
 
-def update_available_workers(state: ConversationState, new_workers: list[WorkerState]) -> None:
-    if new_workers:
+def update_available_workers(state: ConversationState, new_workers: list[WorkerState] | list[dict]) -> None:
+    """
+    Updates the available workers in the conversation state.
+    
+    Args:
+        state (ConversationState): The current conversation state.
+        new_workers (list): A list of WorkerState objects or dictionaries.
+    """
+    logger = logging.getLogger(__name__)
+    
+    try:
+        # Check if the list contains dictionaries by examining the first item
+        if new_workers and isinstance(new_workers[0], dict):
+            logger.debug(f"Converting worker dictionaries to WorkerState objects")
+            new_workers = [WorkerState.model_validate(worker) for worker in new_workers]
+        
         state.available_workers = new_workers
-        print(f"Updated available workers: {state.available_workers}")
-    else:
-        print("No new workers provided.")
+        logger.debug(f"Updated available workers: {[w.agent for w in state.available_workers] if state.available_workers else 'None'}")
+    except Exception as e:
+        logger.error(f"Error updating available workers: {str(e)}")
+        # Keep existing workers if there's an error
+        logger.debug(f"Keeping existing workers: {[w.agent for w in state.available_workers] if state.available_workers else 'None'}")
 
 
 def get_available_workers(state: ConversationState) -> list[WorkerState]:
@@ -182,15 +206,15 @@ def default_tool_response() -> ToolResponse:
 # Handles calls to BAML Navigator which chooses the next tool and provides the tool arguments
 # It provides a faster alternative to LangChain and LangGraph's tool calling functions
 
-# @timer_wrap
+@timer_wrap
 async def async_navigator_handler(
     agent: WorkerState,
     state: ConversationState
 ):
     # from src.chatbot.studio.models import WorkerState, ConversationState
     from src.chatbot.baml_client.async_client import b
+    from src.chatbot.baml_client import b as baml
     from src.chatbot.studio.prompts import SYSTEM_MESSAGE
-
 
     """
     Asynchronously handles navigation using the BAML client.
@@ -223,24 +247,38 @@ async def async_navigator_handler(
         "system_message": SYSTEM_MESSAGE,
         "user_query": messages[1].content,
         "aggregatedMessages": [msg.content for msg in messages],
-        "resource": get_resource(state)
+        "resource": state.resources if state.resources else default_resource_box()
         }
         logger.info("Payload created.")
+        logger.info(f"Payload: {payload}")
         # logger.info(f" Payload messages: {payload['aggregatedMessages']}")
         # Call the BAML Navigate function asynchronously.
         # start_time = time.time()
         logger.info("Calling BAML Navigator function...")
+        
+        # try:
+            # Try the current method first
         nav_stream = b.stream.Navigate(agent, payload)
-        
-        # Await the final, fully parsed response.
         nav_response = await nav_stream.get_final_response()
+        # except AttributeError as e:
+        #     if "Collector" in str(e):
+        #         # Try alternative method if Collector is missing
+        #         logger.info("Using alternative method due to missing Collector")
+        #         nav_response = baml.Navigate(agent, payload)
+        #     else:
+        #         # Re-raise if it's a different attribute error
+        #         raise
         
-        # Extract the tool choice and its argument.
-        next_tool = nav_response.next_tool
-        # print(f"Next tool: {next_tool}\n Justification: {nav_response.justification}")
-        tool_args = nav_response.tool_args
-        logger.info(f"Navigation completed.") #in {time.time() - start_time:.2f} seconds.")
-        return next_tool, tool_args, nav_response.justification, nav_response.explanation
+        if nav_response:
+            # Extract the tool choice and its argument.
+            next_tool = nav_response.next_tool
+            # print(f"Next tool: {next_tool}\n Justification: {nav_response.justification}")
+            tool_args = nav_response.tool_args
+            logger.info(f"Navigation completed.") #in {time.time() - start_time:.2f} seconds.")
+            return next_tool, tool_args, nav_response.justification, nav_response.explanation
+        else:
+            logger.error("No navigation response received")
+            raise ValueError("No navigation response received")
     except Exception as e:
         # Log the exception or handle it as needed
         logger.error(f"An error occurred during navigation: {e}")
@@ -368,14 +406,14 @@ async def create_tool_call_node(state: ConversationState,tools: list[callable], 
         messages.append(res["messages"][-1])
         logger.info(f"Updated messages: {messages}")
         # Check if resources were updated
-        logger.info(f"Updating Resources...")   
-        if state.resources and res["resources"]:
-            logger.info(f"State resources: {state.resources}")
-        elif not state.resources and res["resources"]:
-            state.resources = res["resources"]
-            logger.info(f"Updated resources: {state.resources}")
-        elif not state.resources and not res["resources"]:
-            logger.warning("No resources to update")
+        # logger.info(f"Updating Resources...")   
+        # if state.resources == res["resources"]:
+        #     logger.info(f"State resources: {state.resources}")
+        # elif state.resources != res["resources"]:
+        #     update_resource(state, )
+        #     logger.info(f"Updated resources: {state.resources}")
+        # elif not state.resources and not res["resources"]:
+        #     logger.warning("No resources to update")
         state.version += 1
         state.timestamp = datetime.now(timezone.utc)
         logger.info(f"{agent} work completed. Returning command to supervisor...")
@@ -384,7 +422,7 @@ async def create_tool_call_node(state: ConversationState,tools: list[callable], 
                 "messages": messages,
                 "version": state.version,
                 "timestamp": state.timestamp.isoformat(),
-                "resources": state.resources if state.resources else None
+                "resources": state.resources if state.resources else default_resource_box()
             },
             goto="supervisor",
         )

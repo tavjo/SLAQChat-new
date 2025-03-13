@@ -3,24 +3,25 @@ from typing import Optional, Any#, Annotated, Sequence, TypedDict
 from langchain_core.messages import BaseMessage
 # from langgraph.graph.message import add_messages
 from pydantic import BaseModel, Field
-from typing import List
+from typing import List, Union, Dict, Generic, TypeVar, Optional
 # from langgraph.managed import IsLastStep, RemainingSteps
 # from langgraph.prebuilt.chat_agent_executor import StructuredResponse
 from datetime import datetime, timezone
 from backend.Tools.schemas import UpdatePipelineMetadata
+
 class Column(BaseModel):
     name: str
     type: str
     nullable: bool
-    default: Optional[Any] = None
+    default: Optional[str] = None
     json_keys: Optional[List[str]] = None
 
 class Table(BaseModel):
     name: str
-    columns: List[Column]
+    columns: List["Column"]
 
 class DBSchema(BaseModel):
-    tables: List[Table] | str
+    tables: Union[List["Table"], str]
 
 class Metadata(BaseModel):
     AntibodyParent: Optional[str] = None
@@ -103,11 +104,11 @@ class Metadata(BaseModel):
     Vendor: Optional[str] = None
 
 class ParsedQuery(BaseModel):
-    uid: Optional[str] | Optional[List[str]] = None
-    sampletype: Optional[str] | Optional[List[str]] = None
-    assay: Optional[str] | Optional[List[str]] = None
-    attribute: Optional[str] | Optional[List[str]] = None
-    terms: Optional[str] | Optional[List[str]] = None
+    uid: Union[Optional[List[str]], str] = None
+    sampletype: Union[Optional[List[str]], str] = None
+    assay: Union[Optional[List[str]], str] = None
+    attribute: Union[Optional[List[str]], str] = None
+    terms: Union[Optional[List[str]], str] = None
 
 class SampleTypeAttributes(BaseModel):
     sampletype: str
@@ -115,14 +116,14 @@ class SampleTypeAttributes(BaseModel):
     attributes: List[str]
 
 class ResourceBox(BaseModel):
-    sample_metadata: Optional[Metadata] | Optional[List[Metadata]] | Optional[str] = None
-    db_schema: Optional[DBSchema] = None
+    sample_metadata: Union[Optional["Metadata"], Union[Optional[List["Metadata"]], str]] = None
     protocolURL: Optional[str] = None
     sampleURL: Optional[str] = None
-    UIDs: Optional[List[str]] = None  
-    parsed_query: Optional[ParsedQuery] = None
-    st_attributes: Optional[List[SampleTypeAttributes]] | Optional[SampleTypeAttributes] = None
-    update_info: Optional[UpdatePipelineMetadata] = None
+    UIDs: Optional[List[str]] = None
+    db_schema: Optional["DBSchema"] = None
+    parsed_query: Optional["ParsedQuery"] = None
+    st_attributes: Union[Optional[List["SampleTypeAttributes"]], "SampleTypeAttributes"] = None
+    update_info: Optional["UpdatePipelineMetadata"] = None
 
 
 # New unified state model: separate messages and resources.
@@ -134,7 +135,7 @@ class ToolMetadata(BaseModel):
 class WorkerState(BaseModel):
     agent: str
     role: str
-    toolbox: Optional[dict[str, ToolMetadata]] = None
+    toolbox: Optional[Dict[str, "ToolMetadata"]] = None
 
 class ConversationState(BaseModel):
     messages: List[BaseMessage]
@@ -147,8 +148,9 @@ class ConversationState(BaseModel):
 
 class SchemaMapperState(BaseModel):
     relevant_keys: Optional[List[str]] = None
-    schema_map: DBSchema
+    schema_map: "DBSchema"
     justification: str
+    explanation: str
 
 class DeltaMessage(BaseModel):
     session_id: Optional[str] = None
@@ -162,3 +164,9 @@ class ToolResponse(BaseModel):
     agent: Optional[str] = None
     justification: Optional[str] = None
     explanation: Optional[str] = None
+
+class Payload(BaseModel):
+    system_message: str
+    user_query: str
+    aggregatedMessages: Optional[List[str]] = None
+    resource: Optional["ResourceBox"] = None

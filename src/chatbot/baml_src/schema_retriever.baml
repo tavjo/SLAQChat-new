@@ -1,4 +1,4 @@
-function RetrieveSchema(user_query: string, db_schema: Schema, parsed_query: ParsedQuery) -> SchemaMapper {
+function RetrieveSchema(user_query: string, db_schema: DBSchema, parsed_query: ParsedQuery) -> SchemaMapper {
     client MyClient
     prompt #"
         Map the user query: \n{{ user_query }} \nto the database schema: \n{{db_schema}} using the parsed query {{parsed_query}} as guidance.

@@ -32,10 +32,11 @@ def conversationalist_node(state: ConversationState) -> Command[Literal["query_p
         Exception: If any error occurs during the conversation.
     """
     try:
+        messages = state.messages
         payload = {
-            "system_message": state.messages[0].content,
-            "user_query": state.messages[-1].content,
-            "aggregatedMessages": [msg.content for msg in state.messages],
+            "system_message": messages[0].content,
+            "user_query": messages[-1].content,
+            "aggregatedMessages": [msg.content for msg in messages],
             "resource": default_resource_box()
         }
 
@@ -50,11 +51,11 @@ def conversationalist_node(state: ConversationState) -> Command[Literal["query_p
         if response.retrieve_info:
             goto = "query_parser"
             new_aggregate = response.user_query
-            updated_messages = [HumanMessage(content=new_aggregate, name="user")]
+            messages.append(HumanMessage(content=new_aggregate, name="user"))
         else:
             goto = "FINISH"
             new_aggregate = response.response
-            updated_messages = state.messages.append(HumanMessage(content=new_aggregate, name=response.name)) 
+            messages.append(HumanMessage(content=new_aggregate, name=response.name)) 
         
         # update_messages(state, updated_messages)
         print(goto)
@@ -62,7 +63,7 @@ def conversationalist_node(state: ConversationState) -> Command[Literal["query_p
         state.timestamp = datetime.now(timezone.utc)
         return Command(
             update={
-                "messages": updated_messages,
+                "messages": messages,
                 "version": state.version,
                 "timestamp": state.timestamp.isoformat()
             },
@@ -72,7 +73,7 @@ def conversationalist_node(state: ConversationState) -> Command[Literal["query_p
         print(f"An error occurred in conversationalist_node: {e}")
         return Command(
             update={
-                "messages": state.messages,
+                "messages": state.messages.append(HumanMessage(content=f"An error occurred in conversationalist_node: {e}")),
                 "version": state.version,
                 "timestamp": state.timestamp.isoformat()
             },
@@ -82,5 +83,5 @@ def conversationalist_node(state: ConversationState) -> Command[Literal["query_p
 # Example usage:
 if __name__ == "__main__":
     user_message = [HumanMessage(content = "Hi! Can you give me some information about this sample: NHP-220630FLY-2?")]
-    update_messages(INITIAL_STATE, user_message)
+    INITIAL_STATE.messages.extend(user_message)
     conversationalist_node(INITIAL_STATE)
