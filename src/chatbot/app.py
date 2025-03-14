@@ -12,7 +12,7 @@ from dotenv import load_dotenv
 import asyncio
 import sys,os
 # import time
-# from datetime import datetime, timezone
+from datetime import datetime, timezone
 from copy import deepcopy
 import aiohttp  # Add this import for async HTTP requests
 import uuid
@@ -22,7 +22,7 @@ import pandas as pd
 project_root = os.path.abspath(os.path.join(os.path.dirname(__file__), '../..'))
 sys.path.append(project_root)
 
-# from src.chatbot.studio.models import ConversationState
+from src.chatbot.studio.models import DeltaMessage
 
 load_dotenv()
 os.environ["OPENAI_API_KEY"] = os.getenv("OPENAI_API_KEY")
@@ -67,29 +67,31 @@ def setup_ui():
     user_input = st.chat_input(placeholder="e.g., Tell me more about sample NHP-220630FLY-15?")
     return user_input, st.session_state.session_id
 
+async def run_agent_chatbot(user_input: str, session_id: str):
+    # user_message = HumanMessage(content=user_input, name="User")
+    delta = DeltaMessage(
+        session_id=session_id,
+        new_message=user_input,
+        timestamp=datetime.now(timezone.utc).isoformat(),
+        version=1)
+    print("Sending delta as dict:", delta.model_dump())
+    backend_url = "http://127.0.0.1:8000/sampleretriever/invoke/"
+    async with aiohttp.ClientSession() as session:
+        async with session.post(backend_url, json=delta.model_dump()) as response:
+            if response.status == 200:
+                result = await response.json()
+                return result
+            else:
+                st.error(f"Backend error: {response.status}")
+                return {}
+
 # async def run_agent_chatbot(user_input: str, session_id: str):
 #     user_message = HumanMessage(content=user_input, name="User")
-#     delta = {
-#         "session_id": session_id,
-#         "new_message": user_message,
-#         "timestamp": datetime.now(timezone.utc).isoformat()
-#     }
-#     backend_url = "http://127.0.0.1:8000/sampleretriever/invoke"
-#     async with aiohttp.ClientSession() as session:
-#         async with session.post(backend_url, json=delta) as response:
-#             if response.status == 200:
-#                 result = await response.json()
-#                 return result
-#             else:
-#                 st.error(f"Backend error: {response.status}")
-#                 return {}
-
-async def run_agent_chatbot(user_input: str):
-    user_message = HumanMessage(content=user_input, name="User")
-    fresh_state = deepcopy(INITIAL_STATE)
-    fresh_state.messages.append(user_message)
-    result = await GRAPH.ainvoke(fresh_state)
-    return result
+#     fresh_state = deepcopy(INITIAL_STATE)
+#     fresh_state.messages.append(user_message)
+#     fresh_state.session_id = session_id
+#     result = await GRAPH.ainvoke(fresh_state)
+#     return result
 
 def display_user_input(user_input):
     # Add user input to the conversation state
@@ -98,8 +100,9 @@ def display_user_input(user_input):
 
 def display_ai_response(result):      
     # Extract and display AI response
-    if result["messages"]:
-        ai_message = result["messages"][-1].content
+    if result:
+        # ai_message = result["messages"][-1].content
+        ai_message = result[-1]["content"]
         st.session_state.conversation.append(("SLAQ", ai_message))
         clear_assets()
         return st.chat_message("assistant").write(ai_message)
@@ -119,7 +122,7 @@ async def run_all():
     result = None
     if user_input and session_id:
         display_user_input(user_input)
-        result = await run_agent_chatbot(user_input)
+        result = await run_agent_chatbot(user_input, session_id)
     if result:
         display_ai_response(result)
     clear_assets()

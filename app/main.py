@@ -2,9 +2,9 @@
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from .API import sample_retriever_graph
+from API import sample_retriever_graph
 
-app = FastAPI(title="Multi-Agent Chat API")
+app = FastAPI(title="NExtSEEK Chat API")
 
 app.add_middleware(
     CORSMiddleware,
@@ -15,3 +15,7 @@ app.add_middleware(
 )
 
 app.include_router(sample_retriever_graph.router, prefix="/sampleretriever")
+
+if __name__ == "__main__":
+    import uvicorn
+    uvicorn.run(app, host="127.0.0.1", port=8000)

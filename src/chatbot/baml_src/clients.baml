@@ -5,7 +5,16 @@ client<llm> MyClient {
   options {
     api_key env.OPENAI_API_KEY
     model "gpt-4o-mini"
-    temperature 0.2
+    temperature 0.5
+  }
+}
+
+client<llm> CustomGemini {
+  provider google-ai
+  options {
+    model "gemini-2.0-flash"
+    api_key env.GEMINI_API_KEY
+    temperature 1
   }
 }
 
