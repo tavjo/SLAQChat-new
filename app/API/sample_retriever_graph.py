@@ -1,9 +1,9 @@
 # app/API/sample_retriever_graph.py
 
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, HTTPException, Request
 from typing import List
 import logging
-from langchain_core.messages import HumanMessage, BaseMessage
+from langchain_core.messages import BaseMessage
 from dotenv import load_dotenv
 import os, sys
 import uuid
@@ -13,12 +13,15 @@ from copy import deepcopy
 project_root = os.path.abspath(os.path.join(os.path.dirname(__file__), "../.."))
 sys.path.append(project_root)
 
-from src.chatbot.studio.sample_retriever import GRAPH
+# from src.chatbot.studio.sample_retriever import initialize_graph
 from src.chatbot.studio.models import DeltaMessage
-# from src.chatbot.studio.helpers import update_messages
+from src.chatbot.studio.helpers import handle_user_queries
 from src.chatbot.studio.prompts import INITIAL_STATE
 load_dotenv()
 os.environ["OPENAI_API_KEY"] = os.getenv("OPENAI_API_KEY")
+
+# Global variable for the graph, accessible from your router if needed.
+# GRAPH = None
 
 # Configure logging
 logging.basicConfig(
@@ -40,11 +43,22 @@ def message_to_dict(message: BaseMessage) -> dict:
 conversation_store = {}
 
 @router.post("/invoke", response_model=List[dict])
-async def invoke_sample_retriever_graph(delta: DeltaMessage) -> List[dict]:
+async def invoke_sample_retriever_graph(delta: DeltaMessage, request: Request) -> List[dict]:
     """
     Invoke the pre-compiled multi-agent graph using the provided conversation state.
     """
     logger.info(f"Received delta message: {delta}")
+
+    # Retrieve the shared GRAPH from the app state
+    graph = request.app.state.GRAPH
+
+    config ={"configurable": {"thread_id": "1"}}
+    
+    if graph is None:
+        raise HTTPException(
+            status_code=503,
+            detail="Graph not initialized. Please wait for the service to complete startup."
+        )
     
     try:
         # Determine the session id; if not provided, create a new one.
@@ -70,10 +84,11 @@ async def invoke_sample_retriever_graph(delta: DeltaMessage) -> List[dict]:
         
         # Append the new user input as a HumanMessage to the conversation state.
         try:
-            new_message = HumanMessage(content=delta.new_message, name="User")
-            state.messages.append(new_message)
-            state.version += 1
-            state.timestamp = delta.timestamp
+            # new_message = HumanMessage(content=delta.new_message, name="User")
+            # state.messages.append(new_message)
+            new_state = handle_user_queries(delta.new_message, state)
+            new_state.version += 1
+            new_state.timestamp = delta.timestamp
             logger.debug(f"Updated conversation state with new message")
         except Exception as message_error:
             logger.error(f"Error updating state with new message: {message_error}")
@@ -83,12 +98,12 @@ async def invoke_sample_retriever_graph(delta: DeltaMessage) -> List[dict]:
             )
 
         # Save updated state back to the in-memory store.
-        conversation_store[session_id] = state
+        conversation_store[session_id] = new_state
         
         # Invoke the graph
         try:
             logger.info(f"Invoking GRAPH for session: {session_id}")
-            result = await GRAPH.ainvoke(state) # returns an instance of ConversationState
+            result = await graph.ainvoke(new_state, config) # returns an instance of ConversationState
             logger.info(f"GRAPH invocation successful, received {len(result)} messages\n{result}")
         except Exception as graph_error:
             logger.error(f"Error during GRAPH invocation: {graph_error}", exc_info=True)

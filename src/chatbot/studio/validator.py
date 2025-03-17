@@ -114,11 +114,13 @@ def validator_node(state: ConversationState = INITIAL_STATE) -> Command[Literal[
     # Handle any exception by returning a FINISH command with error information
     state.version += 1
     state.timestamp = datetime.now(timezone.utc)
+    state.available_workers = None
     return Command(
         update={
             "messages": messages,
             "version": state.version,
-            "timestamp": state.timestamp.isoformat()
+            "timestamp": state.timestamp.isoformat(),
+            "available_workers": state.available_workers
         },
         goto="FINISH"
     )

@@ -3,10 +3,11 @@
 from langgraph.graph import START, StateGraph, END
 from typing_extensions import Literal
 from langgraph.types import Command
-# from pydantic import BaseModel, ConfigDict
-# from langgraph.checkpoint.sqlite import SqliteSaver
+from langgraph.checkpoint.sqlite.aio import AsyncSqliteSaver
+import aiosqlite
 import os
 import sys
+import asyncio
 # Add the project root directory to the Python path
 project_root = os.path.abspath(os.path.join(os.path.dirname(__file__), '../../..'))
 print(project_root)
@@ -31,9 +32,15 @@ load_dotenv()
 
 os.environ["OPENAI_API_KEY"] = os.getenv("OPENAI_API_KEY")
 
-# In memory
-# conn = sqlite3.connect(":memory:", check_same_thread = False)
-# memory = AsyncSqliteSaver(conn)
+# Create connection and memory inside an async function instead of at module level
+async def create_memory():
+    conn = await aiosqlite.connect(":memory:")
+    return AsyncSqliteSaver(conn)
+
+# Modified to accept an optional memory parameter
+async def initialize_graph(state: ConversationState = INITIAL_STATE):
+    memory = await create_memory()
+    return sampleRetrieverGraph(state=state, memory=memory)
 
 def finish_node(state: ConversationState) -> Command[Literal["__end__"]]:
     """
@@ -67,5 +74,6 @@ def sampleRetrieverGraph(state: ConversationState = INITIAL_STATE, memory = None
         graph = builder.compile()
     return graph
 
-# Example use without memory
-GRAPH = sampleRetrieverGraph()
+# Don't create GRAPH at module level
+# Instead, create it when needed using:
+# GRAPH = await initialize_graph()

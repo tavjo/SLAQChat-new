@@ -23,7 +23,7 @@ from src.chatbot.studio.prompts import (
 # Set up logger
 logger = logging.getLogger(__name__)
 
-async def data_summarizer_node(state: ConversationState = INITIAL_STATE) -> Command[Literal["responder", "validator"]]:
+async def data_summarizer_node(state: ConversationState = INITIAL_STATE) -> Command[Literal["response_formatter", "validator"]]:
     """
     Summarizes data based on the current conversation state and updates the conversation flow.
 
@@ -56,7 +56,7 @@ async def data_summarizer_node(state: ConversationState = INITIAL_STATE) -> Comm
             logger.debug(f"Summary generated: {result.summary}")
             name = "data_summarizer"
             logger.info(f"Agent: {name} | Justification: {result.justification}")
-            goto = "responder"
+            goto = "response_formatter"
             messages.append(AIMessage(content=result.summary, name=name))
             logger.info(f"Data summarized in {time.time() - start_time:.2f} seconds.")
         except Exception as baml_error:

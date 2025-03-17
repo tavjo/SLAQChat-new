@@ -38,9 +38,11 @@ def responder_node(state: ConversationState = INITIAL_STATE) -> Command[Literal[
         Exception: If any error occurs during the response processing.
     """
     start_time = time.time()
+    state.available_workers = None
+    messages = state.messages
     try:
         logger.info("Processing conversation in responder node")
-        messages = state.messages
+        # messages = state.messages
         
         try:
             logger.debug("Creating payload for BAML Respond")
@@ -56,14 +58,15 @@ def responder_node(state: ConversationState = INITIAL_STATE) -> Command[Literal[
             raise
 
         # Determine which worker group to use
-        if messages[-1].name == "supervisor" or messages[-1].name == "FINISH":
-            logger.debug("Worker adjustment based on supervisor or FINISH message")
-            update_available_workers(state, WORK_GROUP_B)
+        # if messages[-1].name == "supervisor" or messages[-1].name == "FINISH":
+        #     logger.debug("Worker adjustment based on supervisor or FINISH message")
+        #     state.available_workers = WORK_GROUP_B  
 
         # Ensure available workers are set
-        state.available_workers = WORK_GROUP_B
+        if not state.available_workers or state.available_workers == None:
+            state.available_workers = WORK_GROUP_B
         available_workers = get_available_workers(state)
-        logger.info(f"Available Workers: {[w.agent for w in available_workers] if available_workers else 'None'}")
+        logger.info(f"Available Workers: {[w.agent for w in available_workers] if available_workers is not None else 'None'}")
 
         # Call BAML API
         try:
@@ -81,7 +84,7 @@ def responder_node(state: ConversationState = INITIAL_STATE) -> Command[Literal[
             logger.debug("Updating available workers")
             available_workers = [i for i in available_workers if i.agent != goto]
             update_available_workers(state, available_workers)
-            logger.debug(f"Remaining Available Workers: {[w.agent for w in state.available_workers] if state.available_workers else 'None'}")
+            # logger.debug(f"Remaining Available Workers: {[w.agent for w in state.available_workers] if state.available_workers else 'None'}")
         except Exception as e:
             logger.error(f"Failed to update available workers: {str(e)}")
             # Continue with operation even if worker update fails
@@ -97,7 +100,6 @@ def responder_node(state: ConversationState = INITIAL_STATE) -> Command[Literal[
         # Update state metadata
         state.version += 1
         state.timestamp = datetime.now(timezone.utc)
-        
         elapsed_time = time.time() - start_time
         logger.info(f"Responder function executed in {elapsed_time:.2f} seconds")
         

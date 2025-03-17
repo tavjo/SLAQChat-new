@@ -47,7 +47,7 @@ def query_parser_node(state: ConversationState = INITIAL_STATE) -> Command[Liter
 
         payload = {
             "system_message": messages[0].content,
-            "user_query": messages[-1].content,
+            "user_query": messages[1].content,
             "aggregatedMessages": [msg.content for msg in messages],
             "resource": get_resource(state)
         }

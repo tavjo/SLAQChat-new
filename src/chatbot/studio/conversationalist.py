@@ -46,13 +46,13 @@ def conversationalist_node(state: ConversationState) -> Command[Literal["supervi
             "resource": get_resource(state)
         }
 
-        parsed_query = payload["resource"].parsed_query
+        # parsed_query = payload["resource"].parsed_query
         
         start_time = time.time()
         logger.info("Obtaining response from Conversationalist...")
         
         try:
-            response = baml.Conversationalist(payload["user_query"], parsed_query)
+            response = baml.Conversationalist(payload)
             logger.info(f"Response obtained in {time.time() - start_time:.2f} seconds.")
         except Exception as baml_error:
             logger.error(f"Error calling BAML Conversationalist: {baml_error}", exc_info=True)

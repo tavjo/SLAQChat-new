@@ -1,3 +1,9 @@
+import os, sys
+
+# Add the project root directory to the Python path
+project_root = os.path.abspath(os.path.join(os.path.dirname(__file__), '../../..'))
+sys.path.append(project_root)
+
 from backend.Tools.services.sample_service import *
 from backend.Tools.services.multiSample_metadata_service import *
 from backend.Tools.services.update_metadata import *

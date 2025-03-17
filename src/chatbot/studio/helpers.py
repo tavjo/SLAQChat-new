@@ -12,8 +12,12 @@ import logging
 from langgraph.types import Command
 from typing_extensions import Literal
 from datetime import datetime, timezone
-from langchain_core.messages import AIMessage
+from langchain_core.messages import AIMessage, BaseMessage, HumanMessage
 from backend.Tools.schemas import UpdatePipelineMetadata
+from copy import deepcopy
+import uuid
+from typing import Optional
+from datetime import datetime, timezone
 logger = logging.getLogger(__name__)
 
 ########################################################
@@ -474,6 +478,139 @@ async def create_tool_call_node(state: ConversationState,tools: list[callable], 
             goto="validator",
         )
 
+########################################################
+# Helper functions for memory management
+########################################################
+
+def flatten_user_queries(state: ConversationState, session_id: str, timestamp: datetime) -> ConversationState:
+    """
+    Flatten multiple user messages into a single message in the conversation state.
+    
+    Args:
+        state (ConversationState): The current conversation state containing messages
+        session_id (str): The unique session identifier
+        timestamp (datetime): The timestamp for the new flattened message
+    
+    Returns:
+        ConversationState: Updated state with flattened user messages
+        
+    Raises:
+        ValueError: If state or messages are invalid
+        TypeError: If timestamp is not a datetime object
+    """
+    try:
+        logger.info(f"Flattening user queries for session {session_id}")
+        
+        if not state or not hasattr(state, 'messages'):
+            raise ValueError("Invalid conversation state provided")
+            
+        # Get messages from state
+        messages = state.messages
+        logger.debug(f"Processing {len(messages)} messages")
+        
+        # Create dict of user messages with id as key
+        user_messages = {msg.id: msg for msg in messages if msg.name.lower() == "user"}
+        logger.debug(f"Found {len(user_messages)} user messages to flatten")
+        
+        if not user_messages:
+            logger.warning("No user messages found to flatten")
+            return state
+            
+        # Sort user messages by timestamp
+        try:
+            sorted_user_messages = sorted(user_messages.values(), 
+                                          key=lambda x: datetime.fromisoformat(x.id.split("_")[-1]))
+        except Exception as e:
+            logger.error(f"Error sorting messages: {str(e)}")
+            # Fall back to unsorted messages if sorting fails
+            sorted_user_messages = list(user_messages.values())
+        
+        # Concatenate content of sorted user messages
+        flattened_user_query = "; ".join([f"{msg.content} (id: {msg.id})" for msg in sorted_user_messages])
+        logger.debug(f"Created flattened query: {flattened_user_query[:100]}...")
+        
+        # Remove old user messages from state except for most recent one
+        for msgid, msg in user_messages.items():
+            if msgid != sorted_user_messages[-1].id:
+                messages.remove(msg)
+        
+        # Add new user message to state
+        new_msg_id = f"{session_id}_{timestamp.isoformat()}"
+        messages.append(HumanMessage(content=flattened_user_query, name="user", id=new_msg_id))
+        logger.info(f"Successfully flattened {len(sorted_user_messages)} messages into one with ID {new_msg_id}")
+        logger.info(f"Updated messages: {messages}")
+        
+        return state
+        
+    except Exception as e:
+        logger.error(f"Error in flatten_user_queries: {str(e)}", exc_info=True)
+        # Return original state in case of error to prevent data loss
+        return state
+
+def handle_user_queries(user_query: str, state: ConversationState) -> Optional[ConversationState]:
+    """
+    Process a new user query and integrate it into the conversation state.
+    
+    This function creates a new session ID, timestamps the query, adds it to the state,
+    and flattens multiple queries if needed.
+    
+    Args:
+        user_query (str): The text of the user's message
+        state (ConversationState): The current conversation state
+        
+    Returns:
+        ConversationState: A new conversation state with the user query integrated
+        
+    Raises:
+        ValueError: If empty query is provided
+        TypeError: If state is not a valid ConversationState
+    """
+    try:
+        if not user_query or not user_query.strip():
+            logger.warning("Empty user query received")
+            raise ValueError("User query cannot be empty")
+            
+        logger.info("Processing new user query")
+        logger.debug(f"Query content: {user_query[:10]}...")
+        
+        # Create a deep copy to avoid modifying the original state
+        # fresh_state = deepcopy(state)
+        
+        # Generate a unique session ID and get current timestamp
+        session_id = str(uuid.uuid4())
+        timestamp = datetime.now(timezone.utc)
+        logger.debug(f"Created session ID: {session_id}")
+        fresh_state = ConversationState(
+            messages = state.messages,
+            version = 1,
+            timestamp = timestamp,
+            session_id = session_id
+        )
+        logger.info("Fresh state created.")
+        # Create and add the user message
+        msg_id = f"{session_id}_{timestamp.isoformat()}"
+        user_message = HumanMessage(content=user_query, name="user", id=msg_id)
+        fresh_state.messages.append(user_message)
+        
+        # Check if we need to flatten multiple user messages
+        user_message_count = len([i for i in fresh_state.messages if i.name.lower() == "user"])
+        logger.debug(f"Total user messages after adding new one: {user_message_count}")
+        
+        if user_message_count > 1:
+            logger.info("Multiple user messages detected, flattening")
+            fresh_state = flatten_user_queries(fresh_state, session_id, timestamp)
+        
+        # Update session metadata
+        # fresh_state.session_id = session_id
+        # fresh_state.timestamp = timestamp
+        logger.info(f"Successfully processed user query with session ID {session_id}")
+        
+        return fresh_state
+        
+    except Exception as e:
+        logger.error(f"Error in handle_user_queries: {str(e)}", exc_info=True)
+        # Return None to indicate error, caller should handle this case
+        return None
 
 # Example usage:
 # (Make sure to run this inside an async event loop)

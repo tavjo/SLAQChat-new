@@ -154,7 +154,7 @@ class SchemaMapperState(BaseModel):
 
 class DeltaMessage(BaseModel):
     session_id: Optional[str] = None
-    timestamp: Optional[datetime] = None
+    timestamp: Optional[str] = None
     new_message:str
     version: Optional[int] = None
 

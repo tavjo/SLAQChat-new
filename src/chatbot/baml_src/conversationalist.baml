@@ -11,15 +11,15 @@ client<llm> ConversationalistClient {
   options {
     api_key env.OPENAI_API_KEY
     model "gpt-4o"
-    temperature 0.4
+    temperature 0.7
   }
 }
 
-function Conversationalist(user_query: string, parsed_query: ParsedQuery) -> ChatResponse {
+function Conversationalist(context: Payload) -> ChatResponse {
     client ConversationalistClient
     prompt #"
         You are a helpful assistant tasked with answering user questions about a **data management** platform called NExtSEEK for **scientific research**.
-        Examine the user message {{ user_query }} and {{ parsed_query }} to determine if it is a question that requires information to be retrieved from the database.
+        Examine the user message {{ context.user_query }} and parsed query in{{ context.resource }} to determine if it is a question that requires information to be retrieved from the database.
         If it is, set retrieve_info to true and return the user_query, your justification, and the response should be null.
         If it is not, set retrieve_info to false and return the user_query, your justification, and the response should be a friendly and helpful reply to the user's query.
         Do not make up information. If you do not know the answer, set retrieve_info to 'true' in order to start the process for retrieving information from the database.

@@ -38,12 +38,16 @@ def supervisor_node(state: ConversationState = INITIAL_STATE) -> Command[Literal
     Raises:
         Exception: If any error occurs during the supervision process.
     """
+    state.version += 1
+    state.timestamp = datetime.now(timezone.utc)
+    messages = state.messages
+    state.available_workers = None
     try:
-        messages = state.messages
         # if "resources" not in state or state.resources is None:
         #     state.resources = default_resource_box()
         logger.info("Setting available workers...")
-        if not state.available_workers:
+        
+        if not state.available_workers or state.available_workers == None:
             state.available_workers = WORK_GROUP_A
             logger.debug(f"Initialized available workers: {WORK_GROUP_A}")
 
@@ -77,27 +81,26 @@ def supervisor_node(state: ConversationState = INITIAL_STATE) -> Command[Literal
         goto = response.Next_worker.agent
         logger.info(f"Next Worker: {goto}")
         logger.debug(f"Justification: {response.justification}")
-
-        available_workers = [i for i in available_workers if i.agent != goto]
-        update_available_workers(state, available_workers)
         
         if goto == "responder":
             logger.debug("Adding responder messages")
             updated_messages = [AIMessage(content=response.justification, name="supervisor")] + [AIMessage(content=messages[-1].content, name="supervisor")]
             messages.extend(updated_messages)
+            state.available_workers = None
         else:
             logger.debug("Adding supervisor justification message")
             messages.append(AIMessage(content=response.justification, name="supervisor"))
+            # only update available workers if the same worker is beig called more than once in the same session. 
+            available_workers = [i for i in available_workers if i.agent != goto]
+            update_available_workers(state, available_workers)
         
         if goto == "multi_sample_info_retriever":
             logger.info("Redirecting from multi_sample_info_retriever to schema_retriever")
             goto = "schema_retriever"
             
-        logger.debug(f"Remaining Available Workers: {[w.agent for w in state.available_workers]}")
+        # logger.debug(f"Remaining Available Workers: {[w.agent for w in state.available_workers] if state.available_workers is not None else 'None'}")
 
         # Update state metadata
-        state.version += 1
-        state.timestamp = datetime.now(timezone.utc)
         logger.info(f"Routing to {goto} worker with updated state (version {state.version})")
         
         return Command(
