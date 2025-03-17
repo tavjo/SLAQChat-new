@@ -10,6 +10,7 @@ function FormatResponse(messages: Payload) -> ResponseFormatter {
     - Preserve any special formatting (URLs, JSON, etc.)
     - Indicate if information is insufficient to answer
     - Structure the response clearly with bullet points when appropriate
+    - If the response contains one or a list of UIDs, format the UIDs as links to the sample page in this way: [UID](https://nextseek.mit.edu/seek/sampletree/uid={UID}).
 
     {{ messages }}
     {{ctx.output_format}}
