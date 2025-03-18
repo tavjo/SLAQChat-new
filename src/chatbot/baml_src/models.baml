@@ -61,7 +61,7 @@ class Metadata {
     InstrumentUser string?
     Link_PrimaryData string?
     Media string?
-    Name string?
+    Name string? | int?
     Notes string?
     Parent string?
     PassageNum string?

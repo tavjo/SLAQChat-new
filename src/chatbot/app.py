@@ -78,15 +78,25 @@ async def run_agent_chatbot(user_input: str, session_id: str, version: int):
         version=version)
     print("Sending delta as dict:", delta.model_dump())
     backend_url = "http://127.0.0.1:8000/sampleretriever/invoke/"
-    async with aiohttp.ClientSession() as session:
-        async with session.post(backend_url, json=delta.model_dump()) as response:
-            if response.status == 200:
-                result = await response.json()
-                print("Received result:", result)
-                return result
-            else:
-                st.error(f"Backend error: {response.status}")
-                return {}
+    timeout = aiohttp.ClientTimeout(total=600)  # 5 minute timeout
+    
+    try:
+        async with aiohttp.ClientSession(timeout=timeout) as session:
+            async with session.post(backend_url, json=delta.model_dump()) as response:
+                if response.status == 200:
+                    result = await response.json()
+                    print("Received result:", result)
+                    return result
+                else:
+                    error_msg = await response.text()
+                    st.error(f"Backend error: {response.status} - {error_msg}")
+                    return {}
+    except asyncio.TimeoutError:
+        st.error("Request timed out. Please try again.")
+        return {}
+    except aiohttp.ClientError as e:
+        st.error(f"Connection error: {str(e)}")
+        return {}
 
 def display_user_input(user_input):
     # Add user input to the conversation state
@@ -116,10 +126,9 @@ async def run_all():
     user_input, session_id, version = setup_ui()
     result = None
     if user_input and session_id:
-        # new_session_id = str(uuid.uuid4())
-        # st.session_state.session_id = new_session_id  # update session_state with new id
         display_user_input(user_input)
-        result = await run_agent_chatbot(user_input, session_id, version)
+        with st.spinner('Getting response from agents...'):  # Add loading spinner
+            result = await run_agent_chatbot(user_input, session_id, version)
     if result:
         display_ai_response(result)
     clear_assets()

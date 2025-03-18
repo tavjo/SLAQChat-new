@@ -48,7 +48,7 @@ class Metadata(BaseModel):
     InstrumentUser: Optional[str] = None
     Link_PrimaryData: Optional[str] = None
     Media: Optional[str] = None
-    Name: Optional[str] = None
+    Name: Optional[Union[str, int]] = None
     Notes: Optional[str] = None
     Parent: Optional[str] = None
     PassageNum: Optional[str] = None
