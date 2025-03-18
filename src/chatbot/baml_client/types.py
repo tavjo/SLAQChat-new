@@ -166,6 +166,7 @@ class Payload(BaseModel):
     user_query: str
     aggregatedMessages: Optional[List[str]] = None
     resource: Optional["ResourceBox"] = None
+    last_worker: str
 
 class QueryParser(BaseModel):
     parsed_query: "ParsedQuery"
@@ -216,7 +217,7 @@ class ToolArgs(BaseModel):
     key_string: Optional[str] = None
     terms: Optional[List[str]] = None
     uid: Union[Optional[str], Optional[List[str]]] = None
-    sample_type: Union[Optional[str], Optional[List[str]]] = None
+    sample_type: Optional[List[str]] = None
 
 class ToolMetadata(BaseModel):
     doc: str

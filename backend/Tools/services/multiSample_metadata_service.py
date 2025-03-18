@@ -113,6 +113,8 @@ def get_uids_by_terms_and_field(col: str, terms: List[str]) -> List[str]:
         List[str]: A list of UIDs for the given terms.
     """
     try:
+        # capitalize first letter of col
+        col = col.capitalize() if col else None
         if col not in ALLOWED_KEYS:
             logger.warning(f"Column '{col}' is not allowed. Allowed columns are: {ALLOWED_KEYS}")
             return []

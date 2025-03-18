@@ -13,7 +13,7 @@ from langgraph.types import Command
 from src.chatbot.baml_client import b as baml
 
 from src.chatbot.studio.models import ConversationState, ResourceBox, ParsedQuery
-from src.chatbot.studio.helpers import update_resource, get_resource
+from src.chatbot.studio.helpers import update_resource, get_resource, get_last_worker
 from backend.Tools.services.schema_service import extract_relevant_schema
 import asyncio
 from datetime import datetime, timezone
@@ -40,7 +40,7 @@ async def schema_retriever_node(state: ConversationState = INITIAL_STATE) -> Com
     """
     messages = state.messages
     goto = "validator"  # Default fallback in case of errors
-    
+    last_worker = get_last_worker(state)
     try:
         start_time = time.time()
         logger.info("Starting schema retrieval process")
@@ -106,7 +106,8 @@ async def schema_retriever_node(state: ConversationState = INITIAL_STATE) -> Com
                 "messages": messages,
                 "version": state.version,
                 "timestamp": state.timestamp.isoformat(),
-                "resources": get_resource(state)
+                "resources": get_resource(state),
+                "last_worker": last_worker
             },
             goto=goto
         )
@@ -125,7 +126,8 @@ async def schema_retriever_node(state: ConversationState = INITIAL_STATE) -> Com
                 "messages": messages,
                 "version": state.version,
                 "timestamp": state.timestamp.isoformat(),
-                "resources": get_resource(state)
+                "resources": get_resource(state),
+                "last_worker": last_worker
             },
             goto=goto
         )

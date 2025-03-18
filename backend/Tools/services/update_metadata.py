@@ -26,34 +26,62 @@ logger = logging.getLogger(__name__)
 
 @async_wrap
 @timer_wrap
-def get_st_attributes(output_format: str = 'object', filter_by: List[str] = None) -> pd.DataFrame | List[SampleTypeAttributes]:
+def get_st_attributes(
+    output_format: str = 'object',
+    filter_by: Optional[List[str]] = None
+) -> Union[pd.DataFrame, List[SampleTypeAttributes]]:
     """
-    Retrieves sample attributes and their associated sample types from the database.
+    Retrieves sample type title, description and associated attributes from the database.
+    
     Args:
-        output_format (str): The format of the output. Can be 'object' for list of SampleTypeAttributes or 'df' for pd.DataFrame
-        filter_by (List[str]): A list of sample types to filter the results by. Default is None.
+        output_format (str): Format of the output. 'object' returns a list of SampleTypeAttributes, 
+                             'df' returns a pd.DataFrame.
+        filter_by (Optional[List[str]]): A list of sample type titles to filter the results by.
+    
     Returns:
-        pd.DataFrame | List[SampleTypeAttributes]: DataFrame containing attribute titles and their corresponding sample type titles or list of SampleTypeAttributes
+        Union[pd.DataFrame, List[SampleTypeAttributes]]:
+            - If 'df': DataFrame containing attribute titles and their corresponding sample type titles.
+            - If 'object': List of SampleTypeAttributes objects.
     """
-    # Query with JOIN
+    # Execute the query with JOIN
     query = text("""
-    SELECT sa.title AS attribute_title, st.title AS sample_type_title, st.description AS sample_type_description
-    FROM seek_production.sample_attributes sa
-    JOIN seek_production.sample_types st 
-    ON sa.sample_type_id = st.id;
+        SELECT 
+            sa.title AS attribute_title, 
+            st.title AS sample_type_title, 
+            st.description AS sample_type_description
+        FROM seek_production.sample_attributes sa
+        JOIN seek_production.sample_types st 
+            ON sa.sample_type_id = st.id;
     """)
-    st_attributes = execute_query(query, database_name='DB_NAME', output_format='df')
-    if filter_by is not None:
+    df = execute_query(query, database_name='DB_NAME', output_format='df')
+    
+    # Apply filtering if provided
+    if filter_by:
         logging.info(f"Filtering results by sample types: {filter_by}")
-        st_attributes = st_attributes[st_attributes['sample_type_title'].isin(filter_by)]
+        df = df[df['sample_type_title'].isin(filter_by)]
+    
     if output_format == 'object':
-        logging.info(f"Returning attributes as list of SampleTypeAttributes")
-        # Group attributes by sample type
-        st_attributes = st_attributes.groupby(['sample_type_title', 'sample_type_description'])['attribute_title'].apply(list).reset_index()
-        return [SampleTypeAttributes(sampletype=row['sample_type_title'], st_description=row['sample_type_description'], attributes=row['attribute_title']) for _, row in st_attributes.iterrows()]
+        logging.info("Returning attributes as list of SampleTypeAttributes")
+        # Group attributes by sample type title and description, aggregating the attribute titles into a list
+        grouped_df = df.groupby(
+            ['sample_type_title', 'sample_type_description'], as_index=False
+        )['attribute_title'].agg(list)
+        
+        # Build a list of SampleTypeAttributes objects from the grouped data
+        results = []
+        for _, row in grouped_df.iterrows():
+            sta = SampleTypeAttributes(
+                sampletype=row['sample_type_title'],
+                st_description=row['sample_type_description'],
+                attributes=row['attribute_title']
+            )
+            results.append(sta)
+        return results
     else:
-        logging.info(f"Returning attributes as DataFrame")
-        return st_attributes.drop(columns=['sample_type_description'])
+        logging.info("Returning attributes as DataFrame")
+        # Return DataFrame without the description column if not needed
+        return df.drop(columns=['sample_type_description'])
+
 
 @async_wrap
 @timer_wrap

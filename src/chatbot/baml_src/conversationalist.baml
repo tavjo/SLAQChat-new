@@ -8,6 +8,7 @@ class ChatResponse {
 
 // client<llm> ConversationalistClient {
 //   provider "openai"
+//   retry_policy MaxRetries
 //   options {
 //     api_key env.OPENAI_API_KEY
 //     model "gpt-4o"
@@ -16,7 +17,7 @@ class ChatResponse {
 // }
 
 function Conversationalist(context: Payload) -> ChatResponse {
-    client Reasoner
+    client CustomGemini
     prompt #"
         You are a helpful assistant tasked with answering user questions about a **data management** platform called NExtSEEK for **scientific research**.
         Examine the user message {{ context.user_query }} and parsed query in{{ context.resource }} to determine if it is a question that requires information to be retrieved from the database.

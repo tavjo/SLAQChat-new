@@ -19,6 +19,7 @@ TOOLSET1 = [get_sample_name, retrieve_sample_info, fetch_protocol, fetchChildren
 TOOLSET2 = [get_metadata_by_uids, get_uids_by_terms_and_field]
 TOOLSET3 = [update_metadata_pipeline, get_st_attributes]
 
+CONFIG = {"recursion_limit": 10,"configurable": {"thread_id": "1"}}
 
 SYSTEM_MESSAGE = (
     "You are a helpful assistant tasked with answering user questions about a data management platform called NExtSEEK. You also have the ability to update the metadata of the samples in the platform given a correctly formatted csv file."
@@ -28,11 +29,12 @@ INITIAL_STATE: ConversationState = ConversationState(
     messages=[SystemMessage(content=SYSTEM_MESSAGE, name="system")],
     version=1,
     session_id=str(uuid.uuid4()),
-    timestamp=datetime.now(timezone.utc)
+    timestamp=datetime.now(timezone.utc),
+    last_worker="user"
 )
 
 WORK_GROUP_A = [
-   WorkerState(agent="basic_sample_info_retriever",
+    WorkerState(agent="basic_sample_info_retriever",
     role="Retrieves basic metadata for a single sample",
     toolbox=populate_toolbox(TOOLSET1)),
     WorkerState(agent="multi_sample_info_retriever",

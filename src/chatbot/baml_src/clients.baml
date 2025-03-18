@@ -2,6 +2,7 @@
 
 client<llm> MyClient {
   provider "openai"
+  retry_policy MaxRetries
   options {
     api_key env.OPENAI_API_KEY
     model "gpt-4o-mini"
@@ -11,6 +12,7 @@ client<llm> MyClient {
 
 client<llm> Reasoner {
   provider openai
+  retry_policy MaxRetries
   options {
     api_key env.OPENAI_API_KEY
     model "o3-mini"
@@ -19,6 +21,7 @@ client<llm> Reasoner {
 
 client<llm> CustomGemini {
   provider google-ai
+  retry_policy MaxRetries
   options {
     model "gemini-2.0-flash"
     api_key env.GEMINI_API_KEY
@@ -26,6 +29,10 @@ client<llm> CustomGemini {
       temperature 0.5
     }
   }
+}
+
+retry_policy MaxRetries {
+  max_retries 3
 }
 
 client<llm> CustomGPT4o {

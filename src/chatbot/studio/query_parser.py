@@ -12,7 +12,7 @@ from typing_extensions import Literal
 from langgraph.types import Command
 from src.chatbot.baml_client import b as baml
 from src.chatbot.studio.models import ConversationState
-from src.chatbot.studio.helpers import get_resource, update_resource
+from src.chatbot.studio.helpers import get_resource, update_resource, get_last_worker
 from datetime import datetime, timezone
 from langchain_core.messages import HumanMessage, AIMessage
 
@@ -42,6 +42,7 @@ def query_parser_node(state: ConversationState = INITIAL_STATE) -> Command[Liter
     """
     goto = "validator"
     messages = state.messages
+    last_worker = get_last_worker(state)
     try:
         logger.info("Creating payload for query parsing")
 
@@ -49,7 +50,8 @@ def query_parser_node(state: ConversationState = INITIAL_STATE) -> Command[Liter
             "system_message": messages[0].content,
             "user_query": messages[1].content,
             "aggregatedMessages": [msg.content for msg in messages],
-            "resource": get_resource(state)
+            "resource": get_resource(state),
+            "last_worker": last_worker
         }
         logger.debug("Payload created: %s", payload)
         
@@ -97,7 +99,8 @@ def query_parser_node(state: ConversationState = INITIAL_STATE) -> Command[Liter
                 "messages": messages,
                 "version": state.version,
                 "timestamp": state.timestamp.isoformat(),
-                "resources": get_resource(state)
+                "resources": get_resource(state),
+                "last_worker": last_worker
             },
             goto=goto
         )
@@ -122,7 +125,8 @@ def query_parser_node(state: ConversationState = INITIAL_STATE) -> Command[Liter
                 "messages": messages,
                 "version": state.version,
                 "timestamp": state.timestamp.isoformat(),
-                "resources": get_resource(state)
+                "resources": get_resource(state),
+                "last_worker": last_worker
             },
             goto=goto
         )

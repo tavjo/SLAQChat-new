@@ -1,6 +1,7 @@
 // Create a function to validate the response from the responder.
 // client<llm> ValidatorClient {
 //   provider "openai"
+//   retry_policy MaxRetries
 //   options {
 //     api_key env.OPENAI_API_KEY
 //     model "gpt-4o"

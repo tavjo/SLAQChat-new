@@ -12,7 +12,7 @@ from typing_extensions import Literal
 from langgraph.types import Command
 from src.chatbot.baml_client import b as baml
 from src.chatbot.studio.models import ConversationState, ResourceBox, Metadata
-from src.chatbot.studio.helpers import get_resource
+from src.chatbot.studio.helpers import get_resource, get_last_worker
 
 from src.chatbot.studio.prompts import (
     INITIAL_STATE
@@ -38,13 +38,14 @@ def response_formatter_node(state: ConversationState = INITIAL_STATE) -> Command
     """
     messages = state.messages
     name = "response_formatter"
-    
+    last_worker = get_last_worker(state)
     try:
         payload = {
             "system_message": messages[0].content,
             "user_query": messages[1].content,
             "aggregatedMessages": [msg.content for msg in messages if msg.name in ["query_parser", "responder"]],
-            "resource": get_resource(state)
+            "resource": get_resource(state),
+            "last_worker": last_worker
         }
 
         start_time = time.time()
@@ -70,7 +71,8 @@ def response_formatter_node(state: ConversationState = INITIAL_STATE) -> Command
                 "messages": messages,
                 "version": state.version,
                 "timestamp": state.timestamp.isoformat(),
-                "resources": get_resource(state)
+                "resources": get_resource(state),
+                "last_worker": last_worker
             },
             goto=goto
         )
@@ -89,7 +91,8 @@ def response_formatter_node(state: ConversationState = INITIAL_STATE) -> Command
                 "messages": messages,
                 "version": state.version,
                 "timestamp": state.timestamp.isoformat(),
-                "resources": get_resource(state)
+                "resources": get_resource(state),
+                "last_worker": last_worker
             },
             goto="validator",
         )

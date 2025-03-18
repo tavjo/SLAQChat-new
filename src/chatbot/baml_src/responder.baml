@@ -11,6 +11,7 @@ function Respond(inputMessage: Payload, workers: Agent[]) -> Responder {
     4. Never repeat a worker
     5. Choose based on the current conversation state and needs
     6. If an error occurred in a previous worker, summarize the error and return the next worker.
+    7. NEVER make up an answer. If the answer is not already in the resources or the conversation history, clearly state that you do not know the answer.
 
     Selection Process:
     - Analyze the current conversation stage

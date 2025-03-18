@@ -13,7 +13,7 @@ from typing_extensions import Literal
 from langgraph.types import Command
 from src.chatbot.baml_client import b as baml
 from src.chatbot.studio.models import ConversationState, ResourceBox, Metadata, ParsedQuery, SampleTypeAttributes
-from src.chatbot.studio.helpers import get_resource, get_available_workers, update_available_workers
+from src.chatbot.studio.helpers import get_resource, get_available_workers, update_available_workers, get_last_worker
 
 from src.chatbot.studio.prompts import (
     WORK_GROUP_B, 
@@ -40,6 +40,7 @@ def responder_node(state: ConversationState = INITIAL_STATE) -> Command[Literal[
     start_time = time.time()
     state.available_workers = None
     messages = state.messages
+    last_worker = get_last_worker(state)
     try:
         logger.info("Processing conversation in responder node")
         # messages = state.messages
@@ -50,7 +51,8 @@ def responder_node(state: ConversationState = INITIAL_STATE) -> Command[Literal[
                 "system_message": messages[0].content,
                 "user_query": messages[1].content,
                 "aggregatedMessages": [msg.content for msg in messages],
-                "resource": get_resource(state)
+                "resource": get_resource(state),
+                "last_worker": last_worker
             }
             logger.debug("Payload created successfully")
         except IndexError as e:
@@ -109,7 +111,8 @@ def responder_node(state: ConversationState = INITIAL_STATE) -> Command[Literal[
                 "available_workers": get_available_workers(state),
                 "version": state.version,
                 "timestamp": state.timestamp.isoformat(),
-                "resources": get_resource(state)
+                "resources": get_resource(state),
+                "last_worker": last_worker
             },
             goto=goto
         )
@@ -137,7 +140,8 @@ def responder_node(state: ConversationState = INITIAL_STATE) -> Command[Literal[
                 "messages": messages,
                 "version": state.version,
                 "timestamp": state.timestamp.isoformat(),
-                "resources": get_resource(state)
+                "resources": get_resource(state),
+                "last_worker": last_worker
             },
             goto="validator"
         )

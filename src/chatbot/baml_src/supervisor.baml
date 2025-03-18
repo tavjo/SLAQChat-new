@@ -8,6 +8,7 @@ client<llm> SupervisorClient {
     model "gpt-4o"
     temperature 0
   }
+  retry_policy MaxRetries
 }
 
 function Supervise(Messages: Payload, workers: Agent[]) -> Supervisor {
@@ -17,12 +18,15 @@ function Supervise(Messages: Payload, workers: Agent[]) -> Supervisor {
 
     If none of the workers have the capability to answer the user query, then you should route the user query to the "responder" worker.
 
+    **Important:** Never choose the same worker twice in a row. If no response is provided by the chosen worker (determined  by the names in {{ Messages.aggregatedMessages }}), then route to the "responder" worker.
+
     Key responsibilities:
     1. Analyze the user query and available worker capabilities
     2. Choose the most appropriate worker to handle the current task
     3. Track conversation context in aggregatedMessages
     4. Route to "responder" when ready to deliver final answer
-    5. If no workers are available, alwaysroute to "FINISH"
+    5. If no workers are available, always route to "FINISH"
+    6. NEVER make up an answer. If the answer is not already in the resources or the conversation history, clearly state that you do not know the answer or that you do not have the tools necessary to answer the question.
 
     {{ ctx.output_format }}
 

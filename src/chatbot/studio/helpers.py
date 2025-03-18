@@ -24,6 +24,13 @@ logger = logging.getLogger(__name__)
 # Helper functions for state management
 ########################################################
 
+def get_last_worker(state: ConversationState) -> str:
+    messages = state.messages
+    # version = state.version
+    last_worker = f"{messages[-1].name}"
+    state.last_worker = last_worker
+    return state.last_worker
+
 # Example: A default empty resources function if needed.
 def default_resource_box() -> ResourceBox:
     from src.chatbot.studio.models import ResourceBox, SampleTypeAttributes
@@ -178,7 +185,10 @@ def update_resource(state: ConversationState, new_resource: dict) -> None:
                 new_resource_dict["db_schema"] = populate_db_schema(new_resource["db_schema"])
             elif "st_attributes" in new_resource:
                 logger.debug(f"Processing st_attributes")
-                new_resource_dict["st_attributes"] = populate_sample_type_attributes(new_resource["st_attributes"])
+                if isinstance(new_resource["st_attributes"], list) and len(new_resource["st_attributes"]) > 0:
+                    new_resource_dict["st_attributes"] = [populate_sample_type_attributes(i.model_dump()) for i in new_resource["st_attributes"]]
+                else:
+                    new_resource_dict["st_attributes"] = populate_sample_type_attributes(new_resource["st_attributes"].model_dump())
             elif "update_info" in new_resource:
                 logger.debug(f"Processing update_info")
                 new_resource_dict["update_info"] = populate_update_info(new_resource["update_info"])
@@ -301,12 +311,14 @@ async def async_navigator_handler(
         logger.info("Creating payload...")
 
         messages = state.messages
+        last_worker = get_last_worker(state)
 
         payload = {
         "system_message": messages[0].content,
         "user_query": messages[1].content,
         "aggregatedMessages": [msg.content for msg in messages],
-        "resource": get_resource(state)
+        "resource": get_resource(state),
+        "last_worker": last_worker
         }
         logger.info("Payload created.")
         logger.info(f"Payload: {payload}")
@@ -437,6 +449,7 @@ async def create_worker(tools, func):
 async def create_tool_call_node(state: ConversationState,tools: list[callable], func: callable, agent: str) -> Command[Literal["supervisor", "validator"]]:
     agent = agent
     messages = state.messages
+    last_worker = get_last_worker(state)
     try:
         start_time = time.time()
         logger.info("Creating worker...")
@@ -460,7 +473,8 @@ async def create_tool_call_node(state: ConversationState,tools: list[callable], 
                 "messages": messages,
                 "version": state.version,
                 "timestamp": state.timestamp.isoformat(),
-                "resources": get_resource(state)
+                "resources": get_resource(state),
+                "last_worker": last_worker
             },
             goto="supervisor",
         )
@@ -473,7 +487,8 @@ async def create_tool_call_node(state: ConversationState,tools: list[callable], 
                 "messages": messages,
                 "version": state.version,
                 "timestamp": state.timestamp.isoformat(),
-                "resources": get_resource(state)
+                "resources": get_resource(state),
+                "last_worker": last_worker
             },
             goto="validator",
         )
@@ -584,7 +599,8 @@ def handle_user_queries(user_query: str, state: ConversationState) -> Optional[C
             messages = state.messages,
             version = 1,
             timestamp = timestamp,
-            session_id = session_id
+            session_id = session_id,
+            last_worker = "system"
         )
         logger.info("Fresh state created.")
         # Create and add the user message

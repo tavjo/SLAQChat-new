@@ -12,7 +12,7 @@ sys.path.append(project_root)
 from typing_extensions import Literal
 from langgraph.types import Command
 from src.chatbot.studio.models import ConversationState
-from src.chatbot.studio.helpers import get_resource, get_available_workers, update_available_workers
+from src.chatbot.studio.helpers import get_resource, get_available_workers, update_available_workers, get_last_worker
 
 from src.chatbot.studio.prompts import (
     WORK_GROUP_A,
@@ -42,12 +42,14 @@ def supervisor_node(state: ConversationState = INITIAL_STATE) -> Command[Literal
     state.timestamp = datetime.now(timezone.utc)
     messages = state.messages
     state.available_workers = None
+    goto = None
+    last_worker = get_last_worker(state)
     try:
         # if "resources" not in state or state.resources is None:
         #     state.resources = default_resource_box()
         logger.info("Setting available workers...")
         
-        if not state.available_workers or state.available_workers == None:
+        if not state.available_workers or state.available_workers == None and goto == None:
             state.available_workers = WORK_GROUP_A
             logger.debug(f"Initialized available workers: {WORK_GROUP_A}")
 
@@ -57,7 +59,8 @@ def supervisor_node(state: ConversationState = INITIAL_STATE) -> Command[Literal
                 "system_message": messages[0].content,
                 "user_query": messages[1].content,
                 "aggregatedMessages": [msg.content for msg in messages],
-                "resource": get_resource(state)
+                "resource": get_resource(state),
+                "last_worker": last_worker
             }
             logger.debug("Payload created successfully")
         except IndexError as e:
@@ -91,8 +94,11 @@ def supervisor_node(state: ConversationState = INITIAL_STATE) -> Command[Literal
             logger.debug("Adding supervisor justification message")
             messages.append(AIMessage(content=response.justification, name="supervisor"))
             # only update available workers if the same worker is beig called more than once in the same session. 
+
+        if available_workers is not None and goto != None:
             available_workers = [i for i in available_workers if i.agent != goto]
-            update_available_workers(state, available_workers)
+        
+        update_available_workers(state, available_workers)
         
         if goto == "multi_sample_info_retriever":
             logger.info("Redirecting from multi_sample_info_retriever to schema_retriever")
@@ -109,7 +115,8 @@ def supervisor_node(state: ConversationState = INITIAL_STATE) -> Command[Literal
                 "available_workers": state.available_workers,
                 "version": state.version,
                 "timestamp": state.timestamp.isoformat(),
-                "resources": get_resource(state)
+                "resources": get_resource(state),
+                "last_worker": last_worker
             },
             goto=goto
         )
@@ -130,7 +137,8 @@ def supervisor_node(state: ConversationState = INITIAL_STATE) -> Command[Literal
                 "messages": messages,
                 "version": state.version,
                 "timestamp": datetime.now(timezone.utc),
-                "resources": get_resource(state)
+                "resources": get_resource(state),
+                "last_worker": last_worker
             },
             goto="validator"
         )

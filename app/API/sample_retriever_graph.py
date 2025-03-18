@@ -16,7 +16,7 @@ sys.path.append(project_root)
 # from src.chatbot.studio.sample_retriever import initialize_graph
 from src.chatbot.studio.models import DeltaMessage
 from src.chatbot.studio.helpers import handle_user_queries
-from src.chatbot.studio.prompts import INITIAL_STATE
+from src.chatbot.studio.prompts import INITIAL_STATE, CONFIG
 load_dotenv()
 os.environ["OPENAI_API_KEY"] = os.getenv("OPENAI_API_KEY")
 os.environ["GEMINI_API_KEY"] = os.getenv("GEMINI_API_KEY")
@@ -52,7 +52,7 @@ async def invoke_sample_retriever_graph(delta: DeltaMessage, request: Request) -
     # Retrieve the shared GRAPH from the app state
     graph = request.app.state.GRAPH
 
-    config ={"configurable": {"thread_id": "1"}}
+    config = CONFIG
     
     if graph is None:
         raise HTTPException(

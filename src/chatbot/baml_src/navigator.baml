@@ -1,6 +1,7 @@
 
 // client<llm> NavClient {
 //   provider "openai"
+//   retry_policy MaxRetries
 //   options {
 //     api_key env.OPENAI_API_KEY
 //     model "gpt-4o"

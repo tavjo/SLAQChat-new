@@ -8,7 +8,7 @@ class ToolArgs {
     key_string string? @description("json_metadata key")
     terms string[]? @description("terms to search for in the database")
     uid string?|string[]? @description("exact uid of each sample provided by the user")
-    sample_type string?|string[]? @description("specific sample type(s) to pass to the tool")
+    sample_type string[]? @description("specific sample type(s) to pass to the tool")
 }
 
 class Navigator {
@@ -122,6 +122,7 @@ class Payload {
     user_query string @description("The user message")
     aggregatedMessages string[]? @description("The aggregated messages in the conversation")
     resource ResourceBox? @description("The resources available to the agent")
+    last_worker string @description("The last worker that processed the message")
 }
 
 class Agent {

@@ -144,6 +144,7 @@ class ConversationState(BaseModel):
     timestamp: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
     resources: Optional[ResourceBox] = None
     available_workers: Optional[list[WorkerState]] = None
+    last_worker: str = "user"
 
 
 class SchemaMapperState(BaseModel):
@@ -170,3 +171,4 @@ class Payload(BaseModel):
     user_query: str
     aggregatedMessages: Optional[List[str]] = None
     resource: Optional["ResourceBox"] = None
+    last_worker: str = "user"

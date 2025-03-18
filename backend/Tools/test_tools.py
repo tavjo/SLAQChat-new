@@ -8,6 +8,7 @@ sys.path.append(project_root)
 # from backend.Tools.services.sample_service import fetchAllMetadata, fetchChildren
 from backend.Tools.services.multiSample_metadata_service import get_uids_by_terms_and_field, get_metadata_by_uids
 from backend.Tools.services.module_to_json import functions_to_json
+from backend.Tools.services.update_metadata import get_st_attributes
 
 def run_test():
     # name = retrieve_nhp_name('NHP-220630FLY-15')
@@ -16,7 +17,8 @@ def run_test():
     # return fetchChildren('NHP-220630FLY-15')
     # res = asyncio.run(get_uids_by_terms_and_field('Genotype', ['RaDR+/+; GPT+/+; Aag -/-']))
     # res = asyncio.run(get_uids_by_terms_and_field('Study', ['CD8 Depletion']))
-    res = functions_to_json([get_uids_by_terms_and_field, get_metadata_by_uids])
+    # res = functions_to_json([get_uids_by_terms_and_field, get_metadata_by_uids])
+    res = asyncio.run(get_st_attributes(output_format='object', filter_by = ['PAV']))
     print(res)
     return res
     # return print(f"NHP Name: {name}"), print(f"NHP Info:\n {info}"), print(f"NHP Samples:\n {samples}")

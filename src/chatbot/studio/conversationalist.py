@@ -13,7 +13,7 @@ from typing_extensions import Literal
 from langgraph.types import Command
 from src.chatbot.baml_client import b as baml
 from src.chatbot.studio.models import ConversationState
-from src.chatbot.studio.helpers import get_resource, update_resource
+from src.chatbot.studio.helpers import get_resource, update_resource, get_last_worker
 
 from src.chatbot.studio.prompts import (
     INITIAL_STATE
@@ -38,12 +38,14 @@ def conversationalist_node(state: ConversationState) -> Command[Literal["supervi
     """
     goto = "validator"
     messages = state.messages
+    last_worker = get_last_worker(state)
     try:
         payload = {
             "system_message": messages[0].content,
             "user_query": messages[1].content,
             "aggregatedMessages": [msg.content for msg in messages],
-            "resource": get_resource(state)
+            "resource": get_resource(state),
+            "last_worker": last_worker
         }
 
         # parsed_query = payload["resource"].parsed_query
@@ -80,7 +82,8 @@ def conversationalist_node(state: ConversationState) -> Command[Literal["supervi
                 "messages": messages,
                 "version": state.version,
                 "timestamp": state.timestamp.isoformat(),
-                "resources": get_resource(state)
+                "resources": get_resource(state),
+                "last_worker": last_worker
             },
             goto=goto
         )
@@ -107,7 +110,8 @@ def conversationalist_node(state: ConversationState) -> Command[Literal["supervi
                 "messages": messages,
                 "version": state.version + 1 if hasattr(state, 'version') else 1,
                 "timestamp": datetime.now(timezone.utc).isoformat(),
-                "resources": get_resource(state)
+                "resources": get_resource(state),
+                "last_worker": last_worker
             },
             goto=goto,
         )
