@@ -1,5 +1,5 @@
 function RetrieveSchema(user_query: string, db_schema: DBSchema, parsed_query: ParsedQuery) -> SchemaMapper {
-    client MyClient
+    client Reasoner
     prompt #"
         Map the user query: \n{{ user_query }} \nto the database schema: \n{{db_schema}} using the parsed query {{parsed_query}} as guidance.
         The relevant database table is `seek_production.samples` which contains a JSON column 'json_metadata' with sample-specific metadata.

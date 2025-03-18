@@ -1,7 +1,7 @@
 // Create a function to respond to the user's query.
 function Respond(inputMessage: Payload, workers: Agent[]) -> Responder {
-    client MyClient
-      prompt  #"
+    client Reasoner
+    prompt #"
     You are a workflow coordinator selecting the next appropriate worker to handle this conversation.
 
     Worker Selection Rules:

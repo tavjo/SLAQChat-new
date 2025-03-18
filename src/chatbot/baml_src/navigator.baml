@@ -1,15 +1,15 @@
 
-client<llm> NavClient {
-  provider "openai"
-  options {
-    api_key env.OPENAI_API_KEY
-    model "gpt-4o"
-    temperature 0
-  }
-}
+// client<llm> NavClient {
+//   provider "openai"
+//   options {
+//     api_key env.OPENAI_API_KEY
+//     model "gpt-4o"
+//     temperature 0
+//   }
+// }
 
 function Navigate(agent: Agent, payload: Payload) -> Navigator {
-    client NavClient
+    client Reasoner
     prompt #"
     You are a navigation system that determines the next appropriate tool to use from an agent's toolbox.
 

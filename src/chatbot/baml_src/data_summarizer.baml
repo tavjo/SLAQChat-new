@@ -1,6 +1,6 @@
 
 function SummarizeData(inputMessage: Payload) -> DataSummarizer {
-    client MyClient
+    client Reasoner
     prompt #"
     Analyze the conversation and create a concise but informative summary. Focus on:
     1. Key points relevant to the user's query

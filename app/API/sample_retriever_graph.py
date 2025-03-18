@@ -19,7 +19,7 @@ from src.chatbot.studio.helpers import handle_user_queries
 from src.chatbot.studio.prompts import INITIAL_STATE
 load_dotenv()
 os.environ["OPENAI_API_KEY"] = os.getenv("OPENAI_API_KEY")
-
+os.environ["GEMINI_API_KEY"] = os.getenv("GEMINI_API_KEY")
 # Global variable for the graph, accessible from your router if needed.
 # GRAPH = None
 

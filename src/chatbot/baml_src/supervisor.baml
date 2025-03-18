@@ -11,7 +11,7 @@ client<llm> SupervisorClient {
 }
 
 function Supervise(Messages: Payload, workers: Agent[]) -> Supervisor {
-    client SupervisorClient
+    client Reasoner
   prompt #"
     You are a workflow supervisor that routes tasks to specialized workers based on user queries.
 

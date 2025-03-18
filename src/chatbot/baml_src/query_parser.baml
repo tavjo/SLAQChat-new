@@ -5,16 +5,16 @@ class QueryParser {
     justification string @description("The justification for your reasoning (why you chose the parsed query)")
 }
 
-client<llm> ParseQueryClient {
-    provider "openai"
-    options {
-        api_key env.OPENAI_API_KEY
-        model "gpt-4o"
-        temperature 0
-    }
-}
+// client<llm> ParseQueryClient {
+//     provider "openai"
+//     options {
+//         api_key env.OPENAI_API_KEY
+//         model "gpt-4o"
+//         temperature 0
+//     }
+// }
 function ParseQuery(context: Payload) -> QueryParser {
-    client ParseQueryClient
+    client Reasoner
     prompt  #"
     You are a query parser that breaks down complex user queries {{ context.user_query }} into atomic parts.
     Your goal is to create a clear and structured version of the user query.

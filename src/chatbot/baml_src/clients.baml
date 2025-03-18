@@ -9,6 +9,14 @@ client<llm> MyClient {
   }
 }
 
+client<llm> Reasoner {
+  provider openai
+  options {
+    api_key env.OPENAI_API_KEY
+    model "o3-mini"
+  }
+}
+
 client<llm> CustomGemini {
   provider google-ai
   options {

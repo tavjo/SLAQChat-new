@@ -1,15 +1,15 @@
 // Create a function to validate the response from the responder.
-client<llm> ValidatorClient {
-  provider "openai"
-  options {
-    api_key env.OPENAI_API_KEY
-    model "gpt-4o"
-    temperature 0.5
-  }
-}
+// client<llm> ValidatorClient {
+//   provider "openai"
+//   options {
+//     api_key env.OPENAI_API_KEY
+//     model "gpt-4o"
+//     temperature 0.5
+//   }
+// }
 
 function ValidateResponse(inputMessage: Payload) -> Validator {
-  client ValidatorClient
+  client Reasoner
   prompt #"
     You are a validation expert. Analyze the conversation and validate if the response adequately addresses the user's query.
 

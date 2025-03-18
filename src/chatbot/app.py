@@ -26,6 +26,7 @@ from src.chatbot.studio.models import DeltaMessage, ConversationState
 
 load_dotenv()
 os.environ["OPENAI_API_KEY"] = os.getenv("OPENAI_API_KEY")
+os.environ["GEMINI_API_KEY"] = os.getenv("GEMINI_API_KEY")
 output_dir = os.path.join(project_root, "src/chatbot/assets/")
 
 def check_uploaded_file():

@@ -1,6 +1,6 @@
 function FormatResponse(messages: Payload) -> ResponseFormatter {
 
-    client MyClient
+    client Reasoner
         prompt #"
 
     Format a response using only the provided messages and resources. 
