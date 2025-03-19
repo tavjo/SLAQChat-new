@@ -12,7 +12,8 @@ COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
 # Copy the entire Streamlit application code (including the multi-agent framework in studio)
-COPY src/chatbot/ .
+# Copy the entire src directory to preserve the folder structure
+COPY src/ ./src
 
 # Expose the port that Streamlit uses
 EXPOSE 8501
