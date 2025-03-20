@@ -210,7 +210,7 @@ class BamlAsyncClient:
     
     async def Respond(
         self,
-        inputMessage: types.Payload,workers: List[types.Agent] = [],
+        inputMessage: types.Payload,workers: List[types.Agent],
         baml_options: BamlCallOptions = {},
     ) -> types.Responder:
       options: BamlCallOptions = {**self.__baml_options, **(baml_options or {})}
@@ -291,7 +291,7 @@ class BamlAsyncClient:
     
     async def Supervise(
         self,
-        Messages: types.Payload,workers: List[types.Agent] = [],
+        Messages: types.Payload,workers: List[types.Agent],
         baml_options: BamlCallOptions = {},
     ) -> types.Supervisor:
       options: BamlCallOptions = {**self.__baml_options, **(baml_options or {})}
@@ -490,7 +490,7 @@ class BamlStreamClient:
     
     def Respond(
         self,
-        inputMessage: types.Payload,workers: List[types.Agent] = [],
+        inputMessage: types.Payload,workers: List[types.Agent],
         baml_options: BamlCallOptions = {},
     ) -> baml_py.BamlStream[partial_types.Responder, types.Responder]:
       options: BamlCallOptions = {**self.__baml_options, **(baml_options or {})}
@@ -592,7 +592,7 @@ class BamlStreamClient:
     
     def Supervise(
         self,
-        Messages: types.Payload,workers: List[types.Agent] = [],
+        Messages: types.Payload,workers: List[types.Agent],
         baml_options: BamlCallOptions = {},
     ) -> baml_py.BamlStream[partial_types.Supervisor, types.Supervisor]:
       options: BamlCallOptions = {**self.__baml_options, **(baml_options or {})}

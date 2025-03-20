@@ -1,7 +1,7 @@
 class DataSummarizer {
     summary string @description("The summary of the input message")
-    messages Payload @description("The messages in the conversation")
-    justification string @description("The justification for your response")
+    explanation string @description("The explanation for your response (how)")
+    justification string @description("The justification for your response (why)")
 }
 
 class ToolArgs {
@@ -13,7 +13,7 @@ class ToolArgs {
 
 class Navigator {
     agent Agent @description("The current agent in the conversation")
-    explanation string @description("The explanation for choosing the next tool and tool arguments (how)")
+    explanation string @description("The description for choosing the next tool and tool arguments (how)")
     next_tool string @description("The next tool to use from the agent's toolbox")
     tool_args ToolArgs @description("The arguments to pass to the tool")
     justification string @description("The justification for choosing the next tool (why)")
@@ -21,19 +21,21 @@ class Navigator {
 
 class Responder {
     Next_worker Agent @description("The next worker to call")
-    justification string @description("The justification for choosing the next worker")
+    explanation string @description("The explanation for choosing the next worker (how)")
+    justification string @description("The justification for choosing the next worker (why)")
 }
 
 class ResponseFormatter {
     formattedResponse string @description("Formatted response for the user")
     name string @description("The name of the current worker : response_formatter")
-    messages Payload @description("Conversation history and context")
-    justification string @description("The justification for your response")
+    explanation string @description("The explanation for your response (how)")
+    justification string @description("The justification for your response (why)")
 }
 
 class Supervisor {
     Next_worker Agent @description("The next worker to call")
-    justification string @description("The justification for choosing the next worker")
+    explanation string @description("The explanation for choosing the next worker (how)")
+    justification string @description("The justification for choosing the next worker (why)")
 }
 
 class Metadata {
@@ -133,11 +135,12 @@ class Agent {
 
 class Validator {
     name string @description("The name of the current agent : validator")
+    explanation string @description("The explanation for your response (how)")
     Valid bool @description("Whether the response is valid")
-    Clarifying_Question string? @description("A clarifying question to the user if Valid is false")
-    justification string @description("The justification for your response")
     response string? @description("same as inputMessage")
     error string? @description("The error message if the response contains an error")
+    Clarifying_Question string? @description("A clarifying question to the user if Valid is false")
+    justification string @description("The justification for your response (why)")
 }
 
 class ToolMetadata {

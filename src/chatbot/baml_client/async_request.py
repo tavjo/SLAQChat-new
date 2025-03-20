@@ -132,7 +132,7 @@ class AsyncHttpRequest:
     
     async def Respond(
         self,
-        inputMessage: types.Payload,workers: List[types.Agent] = [],
+        inputMessage: types.Payload,workers: List[types.Agent],
         baml_options: BamlCallOptions = {},
     ) -> baml_py.HTTPRequest:
       __tb__ = baml_options.get("tb", None)
@@ -204,7 +204,7 @@ class AsyncHttpRequest:
     
     async def Supervise(
         self,
-        Messages: types.Payload,workers: List[types.Agent] = [],
+        Messages: types.Payload,workers: List[types.Agent],
         baml_options: BamlCallOptions = {},
     ) -> baml_py.HTTPRequest:
       __tb__ = baml_options.get("tb", None)
@@ -355,7 +355,7 @@ class AsyncHttpStreamRequest:
     
     async def Respond(
         self,
-        inputMessage: types.Payload,workers: List[types.Agent] = [],
+        inputMessage: types.Payload,workers: List[types.Agent],
         baml_options: BamlCallOptions = {},
     ) -> baml_py.HTTPRequest:
       __tb__ = baml_options.get("tb", None)
@@ -427,7 +427,7 @@ class AsyncHttpStreamRequest:
     
     async def Supervise(
         self,
-        Messages: types.Payload,workers: List[types.Agent] = [],
+        Messages: types.Payload,workers: List[types.Agent],
         baml_options: BamlCallOptions = {},
     ) -> baml_py.HTTPRequest:
       __tb__ = baml_options.get("tb", None)

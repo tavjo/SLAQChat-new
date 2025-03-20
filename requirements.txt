@@ -5,7 +5,7 @@ aiosqlite==0.20.0
 altair==5.5.0
 anyio==4.8.0
 attrs==25.1.0
-baml-py==0.79.0
+baml-py==0.80.0
 blinker==1.9.0
 cachetools==5.5.1
 certifi==2024.12.14

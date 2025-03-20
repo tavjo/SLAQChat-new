@@ -59,7 +59,7 @@ class DBSchema(BaseModel):
 
 class DataSummarizer(BaseModel):
     summary: Optional[str] = None
-    messages: Optional["Payload"] = None
+    explanation: Optional[str] = None
     justification: Optional[str] = None
 
 class Metadata(BaseModel):
@@ -180,12 +180,13 @@ class ResourceBox(BaseModel):
 
 class Responder(BaseModel):
     Next_worker: Optional["Agent"] = None
+    explanation: Optional[str] = None
     justification: Optional[str] = None
 
 class ResponseFormatter(BaseModel):
     formattedResponse: Optional[str] = None
     name: Optional[str] = None
-    messages: Optional["Payload"] = None
+    explanation: Optional[str] = None
     justification: Optional[str] = None
 
 class SampleTypeAttributes(BaseModel):
@@ -202,6 +203,7 @@ class SchemaMapper(BaseModel):
 
 class Supervisor(BaseModel):
     Next_worker: Optional["Agent"] = None
+    explanation: Optional[str] = None
     justification: Optional[str] = None
 
 class Table(BaseModel):
@@ -226,8 +228,9 @@ class UpdatePipelineMetadata(BaseModel):
 
 class Validator(BaseModel):
     name: Optional[str] = None
+    explanation: Optional[str] = None
     Valid: Optional[bool] = None
-    Clarifying_Question: Optional[str] = None
-    justification: Optional[str] = None
     response: Optional[str] = None
     error: Optional[str] = None
+    Clarifying_Question: Optional[str] = None
+    justification: Optional[str] = None

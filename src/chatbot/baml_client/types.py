@@ -64,7 +64,7 @@ class DBSchema(BaseModel):
 
 class DataSummarizer(BaseModel):
     summary: str
-    messages: "Payload"
+    explanation: str
     justification: str
 
 class Metadata(BaseModel):
@@ -185,12 +185,13 @@ class ResourceBox(BaseModel):
 
 class Responder(BaseModel):
     Next_worker: "Agent"
+    explanation: str
     justification: str
 
 class ResponseFormatter(BaseModel):
     formattedResponse: str
     name: str
-    messages: "Payload"
+    explanation: str
     justification: str
 
 class SampleTypeAttributes(BaseModel):
@@ -207,6 +208,7 @@ class SchemaMapper(BaseModel):
 
 class Supervisor(BaseModel):
     Next_worker: "Agent"
+    explanation: str
     justification: str
 
 class Table(BaseModel):
@@ -231,8 +233,9 @@ class UpdatePipelineMetadata(BaseModel):
 
 class Validator(BaseModel):
     name: str
+    explanation: str
     Valid: bool
-    Clarifying_Question: Optional[str] = None
-    justification: str
     response: Optional[str] = None
     error: Optional[str] = None
+    Clarifying_Question: Optional[str] = None
+    justification: str
