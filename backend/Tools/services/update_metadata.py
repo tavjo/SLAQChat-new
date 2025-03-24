@@ -4,7 +4,8 @@ import time
 import logging
 from sqlalchemy import text, bindparam
 from sqlalchemy.exc import SQLAlchemyError
-import os 
+import os, base64 
+from io import StringIO
 from dotenv import load_dotenv
 from typing import Dict, List, Tuple, Set, Optional, Any, Union
 
@@ -14,7 +15,7 @@ sys.path.append(project_root)
 
 from backend.Tools.core.database import execute_query, execute_update_query
 from backend.Tools.services.helpers import async_wrap, timer_wrap
-from src.chatbot.studio.models import SampleTypeAttributes
+from src.chatbot.studio.models import SampleTypeAttributes, InputCSV
 import asyncio
 from backend.Tools.schemas import UpdatePipelineMetadata
 import logging.handlers
@@ -85,21 +86,23 @@ def get_st_attributes(
 
 @async_wrap
 @timer_wrap
-def get_input_data() -> pd.DataFrame:
+def get_input_data(file_data: InputCSV) -> pd.DataFrame:
     """
     Reads and processes the input CSV file containing sample data to update.
     
+    Args:
+        file_data (InputCSV): InputCSV instance containing file data and metadata
+        
     Returns:
         pd.DataFrame: Processed input data with extracted SampleType from UID.
         
     Raises:
         FileNotFoundError: If input.csv does not exist.
     """
-    # check if input.csv exists
-    if not os.path.exists(os.path.join(project_root, "src/chatbot/assets/input.csv")):
-        raise FileNotFoundError("input.csv does not exist")
-    else:
-        input = pd.read_csv(os.path.join(project_root, "src/chatbot/assets/input.csv"))
+    # Decode the base64 content
+    decoded_content = base64.b64decode(file_data.content).decode('utf-8')
+    # Convert the decoded content to a pandas DataFrame
+    input = pd.read_csv(StringIO(decoded_content))
     input["SampleType"] = input["UID"].str.split("-").str[0]
     cols = ["UID", "SampleType"] + [col for col in input.columns if col not in ["UID", "SampleType"]]
     # Reorder DataFrame
@@ -146,7 +149,7 @@ async def check_attributes(st_attributes: pd.DataFrame) -> pd.DataFrame:
 
 # @async_wrap
 @timer_wrap
-async def filter_attributes(attributes_to_check: pd.DataFrame) -> pd.DataFrame:
+async def filter_attributes(attributes_to_check: pd.DataFrame, file_data: InputCSV) -> pd.DataFrame:
     """
     Filters out samples with attributes that don't exist in the database.
     
@@ -157,7 +160,7 @@ async def filter_attributes(attributes_to_check: pd.DataFrame) -> pd.DataFrame:
         pd.DataFrame: Filtered input data containing only samples with valid attributes.
     """
     ### Removes samples from input who have 0's in the above sample.
-    input = await get_input_data()
+    input = await get_input_data(file_data)
     
     # Step 1: Identify SampleTypes with a '0' in any attribute
     sample_types_to_remove = attributes_to_check[attributes_to_check.eq(0).any(axis=1)]["SampleType"]
@@ -359,7 +362,7 @@ def update_records(update_data: List[Tuple[str, str]], batch_size: int, not_foun
         return None
 
 
-async def update_metadata_pipeline() -> UpdatePipelineMetadata:
+async def update_metadata_pipeline(file_data: InputCSV) -> UpdatePipelineMetadata:
     """
     Main function that orchestrates the entire metadata update process.
     
@@ -370,6 +373,9 @@ async def update_metadata_pipeline() -> UpdatePipelineMetadata:
     4. Fetches current metadata for samples
     5. Updates metadata in memory
     6. Performs batch updates to the database
+
+    Args:
+        file_data (InputCSV): InputCSV instance containing file data and metadata
     
     Returns:
         Dict[str, Any]: Dictionary containing execution results and logs
@@ -407,7 +413,7 @@ async def update_metadata_pipeline() -> UpdatePipelineMetadata:
         
         # Removes samples from input who have 0's in the attributes_to_check
         logger.info("Filtering samples with missing attributes")
-        input_filtered = await filter_attributes(attributes_to_check)
+        input_filtered = await filter_attributes(attributes_to_check, file_data)
         
         # Fetch json_metadata in Batches
         logger.info("Fetching json_metadata in Batches")

@@ -1,20 +1,20 @@
 # app/API/sample_retriever_graph.py
 
-from fastapi import APIRouter, HTTPException, Request
+from fastapi import APIRouter, HTTPException, Request, Form, File, UploadFile
 from typing import List
 import logging
 from langchain_core.messages import BaseMessage
 from dotenv import load_dotenv
-import os, sys
-import uuid
+import os, sys, uuid, base64
 from copy import deepcopy
+from datetime import datetime, timezone
 
 # Adjust project root directory if needed
 project_root = os.path.abspath(os.path.join(os.path.dirname(__file__), "../.."))
 sys.path.append(project_root)
 
 # from src.chatbot.studio.sample_retriever import initialize_graph
-from src.chatbot.studio.models import DeltaMessage
+from src.chatbot.studio.models import DeltaMessage, InputCSV
 from src.chatbot.studio.helpers import handle_user_queries
 from src.chatbot.studio.prompts import INITIAL_STATE, CONFIG
 load_dotenv()
@@ -41,6 +41,39 @@ def message_to_dict(message: BaseMessage) -> dict:
 
 # In-memory store for conversation states: session_id -> ConversationState
 conversation_store = {}
+
+# In-memory store for uploaded CSV files: session_id -> InputCSV
+csv_store = {}
+
+@router.post("/upload-csv", response_model=InputCSV)
+async def upload_csv(
+    session_id: str = Form(...),
+    file: UploadFile = File(...)
+) -> InputCSV:
+    """
+    Receives a CSV file uploaded from the frontend.
+    The file is read as bytes, encoded in base64, and stored as an InputCSV instance.
+    """
+    try:
+        file_bytes = await file.read()
+        # Encode the file bytes as a base64 string.
+        encoded_content = base64.b64encode(file_bytes).decode('utf-8')
+        timestamp = datetime.now(timezone.utc).isoformat()
+        file_id = str(uuid.uuid4())
+        input_csv = InputCSV(
+            file_id=file_id,
+            content=encoded_content,
+            timestamp=timestamp,
+            session_id=session_id
+        )
+        csv_store[session_id] = input_csv
+        logger.info(f"Uploaded CSV stored for session {session_id} with file_id {file_id}")
+        return input_csv
+    except Exception as e:
+        logger.error(f"Error uploading CSV: {e}")
+        raise HTTPException(status_code=400, detail=f"CSV upload failed: {str(e)}")
+
+
 
 @router.post("/invoke", response_model=List[dict])
 async def invoke_sample_retriever_graph(delta: DeltaMessage, request: Request) -> List[dict]:
@@ -96,6 +129,13 @@ async def invoke_sample_retriever_graph(delta: DeltaMessage, request: Request) -
                 status_code=500, 
                 detail=f"Failed to update conversation with new message: {str(message_error)}"
             )
+        
+        # If a CSV has been uploaded for this session, attach its reference.
+        if session_id in csv_store:
+            new_state.file_data = csv_store[session_id]
+            logger.info(f"Attached CSV file (ID: {csv_store[session_id].file_id}) to conversation state for session {session_id}")
+            # Optionally, remove the CSV from csv_store after attaching if you want one-time use.
+            del csv_store[session_id]
 
         # Save updated state back to the in-memory store.
         conversation_store[session_id] = new_state

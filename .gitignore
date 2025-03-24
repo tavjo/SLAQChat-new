@@ -6,6 +6,7 @@ backend/Tools/json_update.ipynb
 backend/Tools/input.csv
 backend/Tools/input_short.csv
 *log.txt
+*assets/*
 assets
 
 # Python

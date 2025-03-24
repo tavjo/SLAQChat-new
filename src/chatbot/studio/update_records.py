@@ -60,9 +60,9 @@ async def update_records(state: ConversationState = INITIAL_STATE)->ToolResponse
         if tool_args:
             logger.info(f"Tool args: {tool_args}")
         if next_tool ==  "update_metadata_pipeline":
-            tool_args = None
+            tool_args = state.file_data
             logger.info(f"Executing {next_tool}")
-            result = await TOOL_DISPATCH[next_tool]()
+            result = await TOOL_DISPATCH[next_tool](tool_args)
             resource_type = "update_info"
         elif next_tool == "get_st_attributes":
             resource_type = "st_attributes"
@@ -84,14 +84,7 @@ async def update_records(state: ConversationState = INITIAL_STATE)->ToolResponse
                 resource_type: result,
             }
             update_resource(state, new_resource)
-            # logger.debug(f"Result: {result}")
             logger.info("Updating state resources")
-            # if resource_type == "st_attributes":
-            #     state.resources = ResourceBox(st_attributes=result)
-            # elif resource_type == "update_info":
-            #     state.resources = ResourceBox(update_info=result)
-            # else:
-            #     state.resources = default_resource_box()
             logger.debug(f"Updated resource: {state.resources}")
             logger.info(f"Creating response object...")
             response = ToolResponse(
@@ -102,10 +95,6 @@ async def update_records(state: ConversationState = INITIAL_STATE)->ToolResponse
             explanation=explanation
             )
             logger.info(f"Response object created: {response}")
-            # msg = HumanMessage(content = response["response"] + "\n" + response["justification"] + "\n" + response["explanation"], name = agent)
-            # state.messages.append(msg)
-            # update_messages(state, msg)
-            # logger.debug(list(response.keys()))
             logger.info(f"Successfully completed tool call {next_tool} for agent : {agent}.")
             return response
         else:

@@ -137,6 +137,12 @@ class WorkerState(BaseModel):
     role: str
     toolbox: Optional[Dict[str, "ToolMetadata"]] = None
 
+class InputCSV(BaseModel):
+    file_id: str
+    content: str  # Base64-encoded string representing the CSV file content
+    timestamp: str
+    session_id: str
+
 class ConversationState(BaseModel):
     messages: List[BaseMessage]
     session_id: str = Field(..., description="Unique session identifier")
@@ -145,6 +151,7 @@ class ConversationState(BaseModel):
     resources: Optional[ResourceBox] = None
     available_workers: Optional[list[WorkerState]] = None
     last_worker: str = "user"
+    file_data: Optional["InputCSV"] = Field(None, description="File content and metadata if the user has uploaded an input file.")
 
 
 class SchemaMapperState(BaseModel):
@@ -172,3 +179,4 @@ class Payload(BaseModel):
     aggregatedMessages: Optional[List[str]] = None
     resource: Optional["ResourceBox"] = None
     last_worker: str = "user"
+

@@ -22,7 +22,9 @@ TOOLSET3 = [update_metadata_pipeline, get_st_attributes]
 CONFIG = {"recursion_limit": 10,"configurable": {"thread_id": "1"}}
 
 SYSTEM_MESSAGE = (
-    "You are a helpful assistant tasked with answering user questions about a data management platform called NExtSEEK. You also have the ability to update the metadata of the samples in the platform given a correctly formatted csv file. NEVER make up an answer. If you cannot answer the question, clearly state that you do not know the answer or that you do not have the tools necessary to answer the question."
+    "You are a helpful assistant tasked with answering user questions about a data management platform called NExtSEEK." 
+    "You also have the ability to update the metadata of the samples in the platform given a correctly formatted csv file." 
+    "NEVER make up an answer. If you cannot answer the question, clearly state that you do not know the answer or that you do not have the tools necessary to answer the question."
 )
 
 INITIAL_STATE: ConversationState = ConversationState(
