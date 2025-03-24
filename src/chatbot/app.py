@@ -9,15 +9,15 @@ import uuid
 import pandas as pd
 
 # Add the project root directory to the Python path
-project_root = os.path.abspath(os.path.join(os.path.dirname(__file__), '../..'))
-sys.path.append(project_root)
+# project_root = os.path.abspath(os.path.join(os.path.dirname(__file__), '../..'))
+# sys.path.append(project_root)
 
 # from studio.models import DeltaMessage
 
 load_dotenv()
 os.environ["OPENAI_API_KEY"] = os.getenv("OPENAI_API_KEY")
 os.environ["GEMINI_API_KEY"] = os.getenv("GEMINI_API_KEY")
-output_dir = os.path.join(project_root, "src/chatbot/assets/")
+output_dir = "assets"
 
 def check_uploaded_file():
     if os.path.exists(os.path.join(output_dir, "input.csv")):
@@ -111,8 +111,10 @@ def display_ai_response(result):
     
 # clear assets folder once conversation is complete
 def clear_assets():
+    # intead of removing the file, just create an empty file
     if os.path.exists(os.path.join(output_dir, "input.csv")):
-        os.remove(os.path.join(output_dir, "input.csv"))
+        with open(os.path.join(output_dir, "input.csv"), "w") as f:
+            f.write("")
 
 async def run_all():
     user_input, session_id, version = setup_ui()
