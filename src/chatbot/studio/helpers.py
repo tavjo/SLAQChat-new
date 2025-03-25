@@ -3,7 +3,7 @@
 import sys
 import os
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..')))
-from src.chatbot.studio.models import ResourceBox, WorkerState, ConversationState, ParsedQuery, DBSchema, Metadata, SampleTypeAttributes, Table, Column, ToolMetadata, ToolResponse
+from src.chatbot.studio.models import ResourceBox, WorkerState, ConversationState, ParsedQuery, DBSchema, Metadata, SampleTypeAttributes, Table, Column, ToolMetadata, ToolResponse, Message
 from langchain_core.messages import BaseMessage, SystemMessage
 import time
 from backend.Tools.services.module_to_json import functions_to_json
@@ -23,6 +23,16 @@ logger = logging.getLogger(__name__)
 ########################################################
 # Helper functions for state management
 ########################################################
+
+def convert_messages(messages: list[BaseMessage]) -> list[Message]:
+    return [
+        Message(
+            name=m.name if m.name else "user",
+            message=m.content,
+            role=m.type if m.type else "user"
+        )
+        for m in messages
+    ]
 
 def get_last_worker(state: ConversationState) -> str:
     messages = state.messages

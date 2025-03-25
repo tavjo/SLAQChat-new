@@ -17,7 +17,10 @@ class QueryParser {
 function ParseQuery(context: Payload) -> QueryParser {
     client Reasoner
     prompt  #"
-    You are a query parser that breaks down complex user queries {{ context.user_query }} into atomic parts.
+      {{ GetSystemPrompt() }}
+      {{ GetNExtSEEKIntro() }}
+    
+    Your task is to breaks down complex user queries {{ context.user_query }} into atomic parts.
     Your goal is to create a clear and structured version of the user query.
 
     Example:

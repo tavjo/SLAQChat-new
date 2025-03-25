@@ -22,14 +22,66 @@ from .globals import DO_NOT_USE_DIRECTLY_UNLESS_YOU_KNOW_WHAT_YOURE_DOING_RUNTIM
 class TypeBuilder(_TypeBuilder):
     def __init__(self):
         super().__init__(classes=set(
-          ["Agent","ChatResponse","Column","DBSchema","DataSummarizer","Metadata","Navigator","ParsedQuery","Payload","QueryParser","ResourceBox","Responder","ResponseFormatter","SampleTypeAttributes","SchemaMapper","Supervisor","Table","ToolArgs","ToolMetadata","UpdatePipelineMetadata","Validator",]
+          ["Agent","ChatResponse","Column","DBSchema","DataSummarizer","Messages","Metadata","Navigator","ParsedQuery","Payload","QueryParser","ResourceBox","Responder","ResponseFormatter","SampleTypeAttributes","SchemaMapper","Supervisor","Table","ToolArgs","ToolMetadata","UpdatePipelineMetadata","Validator",]
         ), enums=set(
           []
         ), runtime=DO_NOT_USE_DIRECTLY_UNLESS_YOU_KNOW_WHAT_YOURE_DOING_RUNTIME)
 
 
+    
+    @property
+    def Metadata(self) -> "MetadataBuilder":
+        return MetadataBuilder(self)
 
 
+
+
+
+class MetadataBuilder:
+    def __init__(self, tb: _TypeBuilder):
+        _tb = tb._tb # type: ignore (we know how to use this private attribute)
+        self.__bldr = _tb.class_("Metadata")
+        self.__properties: typing.Set[str] = set([ "Link_PrimaryData",  "Name",  "UID", ])
+        self.__props = MetadataProperties(self.__bldr, self.__properties)
+
+    def type(self) -> FieldType:
+        return self.__bldr.field()
+
+    @property
+    def props(self) -> "MetadataProperties":
+        return self.__props
+    
+    def list_properties(self) -> typing.List[typing.Tuple[str, ClassPropertyBuilder]]:
+        return [(name, ClassPropertyBuilder(self.__bldr.property(name))) for name in self.__properties]
+
+    def add_property(self, name: str, type: FieldType) -> ClassPropertyBuilder:
+        if name in self.__properties:
+            raise ValueError(f"Property {name} already exists.")
+        return ClassPropertyBuilder(self.__bldr.property(name).type(type))
+
+class MetadataProperties:
+    def __init__(self, cls_bldr: ClassBuilder, properties: typing.Set[str]):
+        self.__bldr = cls_bldr
+        self.__properties = properties
+
+    
+
+    @property
+    def Link_PrimaryData(self) -> ClassPropertyBuilder:
+        return ClassPropertyBuilder(self.__bldr.property("Link_PrimaryData"))
+
+    @property
+    def Name(self) -> ClassPropertyBuilder:
+        return ClassPropertyBuilder(self.__bldr.property("Name"))
+
+    @property
+    def UID(self) -> ClassPropertyBuilder:
+        return ClassPropertyBuilder(self.__bldr.property("UID"))
+
+    def __getattr__(self, name: str) -> ClassPropertyBuilder:
+        if name not in self.__properties:
+            raise AttributeError(f"Property {name} not found.")
+        return ClassPropertyBuilder(self.__bldr.property(name))
 
 
 

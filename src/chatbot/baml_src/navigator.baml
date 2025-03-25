@@ -12,7 +12,11 @@
 function Navigate(agent: Agent, payload: Payload) -> Navigator {
     client Reasoner
     prompt #"
-    You are a navigation system that determines the next appropriate tool to use from an agent's toolbox.
+
+    {{ GetSystemPrompt() }}
+    {{ GetNExtSEEKIntro() }}
+
+    Your role is to determine the next appropriate tool to use from an agent's toolbox.
 
     Instructions:
     1. Analyze the user query {{ payload.user_query }} and conversation context
@@ -22,7 +26,7 @@ function Navigate(agent: Agent, payload: Payload) -> Navigator {
     5. Do not return a tool if none appear suitable to answer the user query. Instead return an empty string for the tool name and an empty list for the tool arguments.
     6. You must carefully assess the metadadata on the tool selected to ensure that the arguments provided are valid. 
     7. Also, when providing the tool arguments, use the mapped database schema in {{ payload.resource }} to determine the exact database terms to pass in. 
-    8. Do not make assumptions about the database schema. Only use the mapped schema in {{ payload.resource }}.
+    8. Do not make assumptions about the database schema. Only use the mapped schema in the resources.
 
     Constraints:
     - The tool name must exactly match one in the agent's toolbox

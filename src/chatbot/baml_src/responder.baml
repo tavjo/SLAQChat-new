@@ -1,8 +1,11 @@
 // Create a function to respond to the user's query.
 function Respond(inputMessage: Payload, workers: Agent[]) -> Responder {
-    client Reasoner
+    client MyClient
     prompt #"
-    You are a workflow coordinator selecting the next appropriate worker to handle this conversation.
+    {{ GetSystemPrompt() }}
+    {{ GetNExtSEEKIntro() }}
+
+    Your role is to direct the flow of an ongoing conversation by selecting the next appropriate worker to handle the next task. 
 
     Worker Selection Rules:
     1. Workers must be used in this sequence: {{ workers }}
@@ -22,17 +25,20 @@ function Respond(inputMessage: Payload, workers: Agent[]) -> Responder {
     {{ ctx.output_format }}
 
     {{ _.role("system") }}
-    Available Workers: {{ workers }}
-    System Context: {{ inputMessage.system_message }}
+    
+    Available Workers:
+    {% for worker in workers %}
+    --- Worker: {{ worker.agent }}
+    --- Role: {{ worker.role }}
+    --- Toolbox: {{ worker.toolbox }}
+    {% endfor %}
 
     {{ _.role("user") }}
     Current Query: {{ inputMessage.user_query }}
 
     {% if inputMessage.aggregatedMessages %}
     Conversation History:
-    {% for message in inputMessage.aggregatedMessages %}
-    - {{ message }}
-    {% endfor %}
+    {{ PrintMessages(inputMessage.aggregatedMessages) }}
     {% endif %}
 
     {% if inputMessage.resource %}

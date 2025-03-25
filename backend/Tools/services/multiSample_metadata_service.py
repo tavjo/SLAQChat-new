@@ -3,14 +3,13 @@
 import json
 import logging
 from pydantic import ValidationError
-from typing import List
+from typing import List, Union
 from sqlalchemy import text, bindparam
-import os
-import sys
+import os, sys
 # import pandas as pd
 # import asyncio
-from backend.Tools.services.helpers import async_wrap
-from backend.Tools.schemas import ALLOWED_KEYS
+from backend.Tools.services.helpers import async_wrap, timer_wrap
+# from backend.Tools.schemas import ALLOWED_KEYS
 # Add the project root directory to the Python path
 project_root = os.path.abspath(os.path.join(os.path.dirname(__file__), '../../..'))
 sys.path.append(project_root)
@@ -19,7 +18,9 @@ from backend.Tools.core.database import execute_query
 
 logger = logging.getLogger(__name__)
 
+
 @async_wrap
+@timer_wrap
 def multi_sample_info_retrieval(uids: List[str], metadata: List[dict]) -> List[dict] | None:
     """
     Retrieves the metadata for multiple samples in the database.
@@ -74,6 +75,7 @@ def multi_sample_info_retrieval(uids: List[str], metadata: List[dict]) -> List[d
         return None
 
 
+@timer_wrap
 async def get_metadata_by_uids(uids: List[str]) -> List[dict]:
     """
     Get all metadata for a given list of UIDs.
@@ -103,57 +105,63 @@ async def get_metadata_by_uids(uids: List[str]) -> List[dict]:
 
 
 @async_wrap
-def get_uids_by_terms_and_field(col: str, terms: List[str]) -> List[str]:
+@timer_wrap
+def get_uids_by_terms_and_field(cols: Union[str, List[str]], terms: List[str]) -> List[str]:
     """
-    Get all UIDs for a given list of terms and for a specific column in a table.
-    args:
-        col (str): The json_key to search in.
-        terms (List[str]): The terms of the metadata to get.
-    returns:
+    Get all UIDs for a given list of terms and for specific column(s) in a table.
+    If multiple columns are provided, the number of terms must match the number of columns.
+    Args:
+        cols (str | List[str]): The json_keys of the attributes to search.
+        terms (List[str]): The terms to search for. If cols is a list, terms should have the same length and match the order of the columns.
+    Returns:
         List[str]: A list of UIDs for the given terms.
     """
     try:
-        # capitalize first letter of col
-        col = col.capitalize() if col else None
-        if col not in ALLOWED_KEYS:
-            logger.warning(f"Column '{col}' is not allowed. Allowed columns are: {ALLOWED_KEYS}")
+        # Normalize cols: if a single column is provided, convert it to a list.
+        if isinstance(cols, str):
+            cols = [cols]
+        
+        # Format columns by capitalizing and prepending '$.'
+        formatted_cols = [f"$.{c.capitalize()}" for c in cols]
+        
+        # Check if terms are provided
+        if not terms:
+            logger.warning(f"No terms provided for columns '{formatted_cols}'")
             return []
-        else:
-            col = f"$.{col}"
-        if terms and len(terms) > 1:
-            print(f"terms: {terms}\ncol: {col}")
-            query = text(
-                """
-                SELECT uuid, json_metadata
-                FROM seek_production.samples 
-                WHERE JSON_EXTRACT(json_metadata, :col) IN :terms;
-                """
-            )
-            query_text = query.bindparams(bindparam("terms", expanding=True))
-            uids = execute_query(query_text.params(col=col, terms=terms), 'DB_NAME')
-        elif terms and len(terms) == 1:
-            print(f"terms: {terms}\ncol: {col}")
-            query = text(
-                """
-                SELECT uuid, json_metadata
-                FROM seek_production.samples
-                WHERE JSON_EXTRACT(json_metadata, :col) = :terms;
-                """
-            )
-            results = execute_query(query.bindparams(col=col, terms=terms[0]), 'DB_NAME')
-            uids = []
-            for result in results:
-                uids.append(result['uuid'])
-        else:
-            logger.warning(f"No terms provided for column '{col}'")
+
+        ## # allow all columns because ALLOWED_KEYS is not complete and should vary depending on the sample type. However, if we are retrieving UIDs, we cannot know the sample type beforehand.
+
+        # Validate that the number of columns matches the number of terms
+        if len(formatted_cols) != len(terms):
+            logger.error(f"Number of columns {formatted_cols} and terms {terms} do not match.")
             return []
         
+        # Build dynamic WHERE clause and bind parameters.
+        conditions = []
+        bind_params = {}
+        for idx, (col_value, term_value) in enumerate(zip(formatted_cols, terms)):
+            conditions.append(f"JSON_EXTRACT(json_metadata, :col{idx}) = :term{idx}")
+            bind_params[f"col{idx}"] = col_value
+            bind_params[f"term{idx}"] = term_value
+
+        where_clause = " AND ".join(conditions)
+        query_str = f"""
+            SELECT uuid, json_metadata
+            FROM seek_production.samples
+            WHERE {where_clause};
+        """
+        query = text(query_str)
+
+        # Execute query and extract UIDs.
+        results = execute_query(query.bindparams(**bind_params), 'DB_NAME')
+        uids = [result['uuid'] for result in results]
+
         if not uids:
-            logger.warning(f"No UIDs found for column '{col}' with terms: {terms}")
+            logger.warning(f"No UIDs found for columns '{formatted_cols}' with terms: {terms}")
         else:
             logger.info(f"Retrieved UIDs: {uids}")
-        
+
         return uids
     except Exception as e:
-        logger.error(f"Error in get_uids_by_terms_and_field: {e}")
+        logger.error(f"Error in get_uids_by_terms_and_fields: {e}")
         return []

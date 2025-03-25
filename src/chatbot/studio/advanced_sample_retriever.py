@@ -69,7 +69,7 @@ async def multi_sample_info(state: ConversationState = INITIAL_STATE)->ToolRespo
             result = await TOOL_DISPATCH[next_tool](tool_args)
         elif next_tool == "get_uids_by_terms_and_field":
             resource_type = "UIDs"
-            tool_args = (tool_args.key_string, tool_args.terms)
+            tool_args = (tool_args.json_keys, tool_args.terms)
             logger.info(f"Executing {next_tool} with args: {tool_args}")
             result = await TOOL_DISPATCH[next_tool](*tool_args)
         elif next_tool == "" and len(tool_args) == 0:
@@ -166,23 +166,41 @@ async def multi_sample_info_retriever_node(state: ConversationState = INITIAL_ST
 
 if __name__ == "__main__":
     # asyncio.run(basic_sample_info())
+    # initial_state: ConversationState = {
+    #     "messages": [
+    #     # HumanMessage(content="Can you please list all the samples associated with the following scientist: 'Patricia Grace'?", name='user'),
+    #     HumanMessage(content="What is the genotype for the mice with these UIDs: 'MUS-220124FOR-1' and 'MUS-220124FOR-73'?", name = 'user'),
+    #     AIMessage(content="Parsed User Query: ```json{'uid': ['MUS-220124FOR-1', 'MUS-220124FOR-73'], 'sampletype': 'mouse', 'assay': None, 'attribute': 'genotype', 'terms': None}```Justification: The query explicitly mentions UIDs, which are identifiers for specific samples, in this case, mice. The user is interested in the 'genotype' attribute of these samples, as indicated by the phrase 'What is the genotype'. The sample type is inferred to be 'mouse' based on the context of the UIDs and the mention of 'mice'. Explanation: The user query is asking for the genotype of specific mice identified by their UIDs. The UIDs provided are 'MUS-220124FOR-1' and 'MUS-220124FOR-73'. The query is focused on the 'genotype' attribute of these mice.", name = "query_parser")
+    #     ],
+    #     "resources": ResourceBox(
+    #         sample_metadata=None, 
+    #         db_schema=DBSchema(tables=[Table(name='seek_production.samples', columns=[Column(name='id', type='INTEGER', nullable=False, default=None, json_keys=None), Column(name='title', type='VARCHAR(255)', nullable=True, default=None, json_keys=None), Column(name='sample_type_id', type='INTEGER', nullable=True, default=None, json_keys=None), Column(name='json_metadata', type='TEXT', nullable=True, default=None, json_keys=['Concentration', 'Substrain', 'CellLineage', 'Notes', 'QC', 'ReagenCatalogNum', 'Reference', 'Type', 'Genotype', 'ValidationMethod', 'Publish_uri', 'TreatmentTime', 'Catalog#', 'RepositoryID', 'TotalProteinUnits', 'VolumeUnits', 'OrganDetail', 'Media', 'AntibodyParent', 'InstrumentUser', 'CollectionTime', 'Timepoint', 'Protocol_Stimulation', 'TreatmentTimeUnits', 'Checksum_PrimaryType', 'FlowAmountUnits', 'TreatmentDoseUnits', 'Treatment1Reference', 'StorageLocation', 'File_PrimaryData', 'Qtag', 'StorageSite', 'StorageTemperatureUnits', 'TreatmentDose', 'ReagentManufacturer', 'ValidationQuality', 'Protocol_Treatment', 'Treatment1Dose', 'Treatment2Reference', 'ODFrozen', 'Stain', 'Protocol', 'FMO', 'QC_notes', 'TotalProtein', 'Scientist', 'Treatment2DoseUnits', 'Treatment', 'UID', 'Note', 'TaxonomyID', 'Link_PrimaryData', 'Vendor', 'ConcentrationUnits', 'Checksum_PrimaryData', 'GramStaining', 'NumAliquot', 'Link_Sequence', 'BiosafetyLevel', 'Instrument', 'SampleCreationDate', 'Fixative', 'Lab', 'ODWavelength', 'PassageNum', 'TreatmentRoute', 'CellCount', 'TreatmentDoseTime', 'Repository', 'Reagent', 'BioSampleAccession', 'Name', 'Fixation', 'Species', 'Treatment2Dose', 'SourceFacility', 'StorageTemperature', 'Treatment1', 'SEEKSubmissionDate', 'Software', 'StorageType', 'CellLine', 'CollectionTimeUnits', 'Volume', 'Source', 'Organ', 'Morphology', 'InoculumPrep', 'Strain', 'TreatmentType', 'Treatment2', 'Phenotype', 'CompensationFCSParent', 'SubstrainReference', 'Path_PrimaryData', 'ReagentBrand', 'Culture', 'Treatment1DoseUnits', 'Parent', 'Stimulation', 'Barcode', 'FlowAmount']), Column(name='uuid', type='VARCHAR(255)', nullable=True, default=None, json_keys=None), Column(name='contributor_id', type='INTEGER', nullable=True, default=None, json_keys=None), Column(name='policy_id', type='INTEGER', nullable=True, default=None, json_keys=None), Column(name='created_at', type='DATETIME', nullable=False, default=None, json_keys=None), Column(name='updated_at', type='DATETIME', nullable=False, default=None, json_keys=None), Column(name='first_letter', type='VARCHAR(1)', nullable=True, default=None, json_keys=None), Column(name='other_creators', type='TEXT', nullable=True, default=None, json_keys=None), Column(name='originating_data_file_id', type='INTEGER', nullable=True, default=None, json_keys=None), Column(name='deleted_contributor', type='VARCHAR(255)', nullable=True, default=None, json_keys=None)])]), 
+    #         parsed_query=ParsedQuery(uid=['MUS-220124FOR-1', 'MUS-220124FOR-73'], sampletype='mouse', assay=None, attribute='genotype', terms=None), st_attributes=None, 
+    #         update_info=None,
+    #         protocolURL=None, 
+    #         sampleURL=None, 
+    #         UIDs=None
+    #     )
+    #     # HumanMessage(content='Scientist', name='schema_mapper')],
+    # }
     initial_state: ConversationState = {
-        "messages": [
-        # HumanMessage(content="Can you please list all the samples associated with the following scientist: 'Patricia Grace'?", name='user'),
-        HumanMessage(content="What is the genotype for the mice with these UIDs: 'MUS-220124FOR-1' and 'MUS-220124FOR-73'?", name = 'user'),
-        AIMessage(content="Parsed User Query: ```json{'uid': ['MUS-220124FOR-1', 'MUS-220124FOR-73'], 'sampletype': 'mouse', 'assay': None, 'attribute': 'genotype', 'terms': None}```Justification: The query explicitly mentions UIDs, which are identifiers for specific samples, in this case, mice. The user is interested in the 'genotype' attribute of these samples, as indicated by the phrase 'What is the genotype'. The sample type is inferred to be 'mouse' based on the context of the UIDs and the mention of 'mice'. Explanation: The user query is asking for the genotype of specific mice identified by their UIDs. The UIDs provided are 'MUS-220124FOR-1' and 'MUS-220124FOR-73'. The query is focused on the 'genotype' attribute of these mice.", name = "query_parser")
-        ],
-        "resources": ResourceBox(
-            sample_metadata=None, 
-            db_schema=DBSchema(tables=[Table(name='seek_production.samples', columns=[Column(name='id', type='INTEGER', nullable=False, default=None, json_keys=None), Column(name='title', type='VARCHAR(255)', nullable=True, default=None, json_keys=None), Column(name='sample_type_id', type='INTEGER', nullable=True, default=None, json_keys=None), Column(name='json_metadata', type='TEXT', nullable=True, default=None, json_keys=['Concentration', 'Substrain', 'CellLineage', 'Notes', 'QC', 'ReagenCatalogNum', 'Reference', 'Type', 'Genotype', 'ValidationMethod', 'Publish_uri', 'TreatmentTime', 'Catalog#', 'RepositoryID', 'TotalProteinUnits', 'VolumeUnits', 'OrganDetail', 'Media', 'AntibodyParent', 'InstrumentUser', 'CollectionTime', 'Timepoint', 'Protocol_Stimulation', 'TreatmentTimeUnits', 'Checksum_PrimaryType', 'FlowAmountUnits', 'TreatmentDoseUnits', 'Treatment1Reference', 'StorageLocation', 'File_PrimaryData', 'Qtag', 'StorageSite', 'StorageTemperatureUnits', 'TreatmentDose', 'ReagentManufacturer', 'ValidationQuality', 'Protocol_Treatment', 'Treatment1Dose', 'Treatment2Reference', 'ODFrozen', 'Stain', 'Protocol', 'FMO', 'QC_notes', 'TotalProtein', 'Scientist', 'Treatment2DoseUnits', 'Treatment', 'UID', 'Note', 'TaxonomyID', 'Link_PrimaryData', 'Vendor', 'ConcentrationUnits', 'Checksum_PrimaryData', 'GramStaining', 'NumAliquot', 'Link_Sequence', 'BiosafetyLevel', 'Instrument', 'SampleCreationDate', 'Fixative', 'Lab', 'ODWavelength', 'PassageNum', 'TreatmentRoute', 'CellCount', 'TreatmentDoseTime', 'Repository', 'Reagent', 'BioSampleAccession', 'Name', 'Fixation', 'Species', 'Treatment2Dose', 'SourceFacility', 'StorageTemperature', 'Treatment1', 'SEEKSubmissionDate', 'Software', 'StorageType', 'CellLine', 'CollectionTimeUnits', 'Volume', 'Source', 'Organ', 'Morphology', 'InoculumPrep', 'Strain', 'TreatmentType', 'Treatment2', 'Phenotype', 'CompensationFCSParent', 'SubstrainReference', 'Path_PrimaryData', 'ReagentBrand', 'Culture', 'Treatment1DoseUnits', 'Parent', 'Stimulation', 'Barcode', 'FlowAmount']), Column(name='uuid', type='VARCHAR(255)', nullable=True, default=None, json_keys=None), Column(name='contributor_id', type='INTEGER', nullable=True, default=None, json_keys=None), Column(name='policy_id', type='INTEGER', nullable=True, default=None, json_keys=None), Column(name='created_at', type='DATETIME', nullable=False, default=None, json_keys=None), Column(name='updated_at', type='DATETIME', nullable=False, default=None, json_keys=None), Column(name='first_letter', type='VARCHAR(1)', nullable=True, default=None, json_keys=None), Column(name='other_creators', type='TEXT', nullable=True, default=None, json_keys=None), Column(name='originating_data_file_id', type='INTEGER', nullable=True, default=None, json_keys=None), Column(name='deleted_contributor', type='VARCHAR(255)', nullable=True, default=None, json_keys=None)])]), 
-            parsed_query=ParsedQuery(uid=['MUS-220124FOR-1', 'MUS-220124FOR-73'], sampletype='mouse', assay=None, attribute='genotype', terms=None), st_attributes=None, 
-            update_info=None,
-            protocolURL=None, 
-            sampleURL=None, 
-            UIDs=None
-        )
-        # HumanMessage(content='Scientist', name='schema_mapper')],
-    }
+    "messages": [
+    # HumanMessage(content="Can you please list all the samples associated with the following scientist: 'Patricia Grace'?", name='user'),
+    HumanMessage(content = "Please list all samples with genotype 'RaDR+/+; GPT+/+' that are in cohort 'Water Study'.", name = "user"),
+    AIMessage(content="Parsed User Query: ```json{'uid': None, 'sampletype': None, 'assay': None, 'attribute': ['genotype', 'cohort'], 'terms': ['RaDR+/+; GPT+/+', 'Water Study']}```", name = "query_parser")
+    ],
+    "resources": ResourceBox(
+        sample_metadata=None, 
+        db_schema=None, 
+        parsed_query=ParsedQuery(uid=None, sampletype=None, assay=None, attribute=['genotype', 'cohort'], terms=['RaDR+/+; GPT+/+', 'Water Study']),
+        st_attributes=None, 
+        update_info=None,
+        protocolURL=None, 
+        sampleURL=None, 
+        UIDs=None
+    )
+    # HumanMessage(content='Scientist', name='schema_mapper')],
+}
     INITIAL_STATE.messages.extend(initial_state["messages"])
     INITIAL_STATE.resources = initial_state["resources"]
 

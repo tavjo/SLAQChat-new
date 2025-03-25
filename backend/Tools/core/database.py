@@ -10,7 +10,7 @@ import json
 import sys
 project_root = os.path.abspath(os.path.join(os.path.dirname(__file__), '../../..'))
 sys.path.append(project_root)
-from backend.Tools.schemas import ALLOWED_KEYS
+# from backend.Tools.schemas import ALLOWED_KEYS
 load_dotenv()
 
 def get_db_connection(database_name: str = 'DB_NAME'):
@@ -41,11 +41,11 @@ def get_db_connection(database_name: str = 'DB_NAME'):
         logging.error(f"Error connecting to the database: {e}")
         raise
 
-def get_json_keys(table: str, json_column: str, database_name: str = 'DB_NAME', sample_size: int = len(ALLOWED_KEYS)):
+def get_json_keys(table: str, json_column: str, database_name: str = 'DB_NAME'):
     """
     Query a sample of rows from a JSON column and return the union of keys.
     """
-    query = text(f"SELECT {json_column} FROM {table} WHERE {json_column} IS NOT NULL LIMIT {sample_size};")
+    query = text(f"SELECT {json_column} FROM {table} WHERE {json_column} IS NOT NULL;")
     try:
         results = execute_query(query, database_name)
         keys = set()

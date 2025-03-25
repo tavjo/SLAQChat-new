@@ -17,15 +17,23 @@ class ChatResponse {
 // }
 
 function Conversationalist(context: Payload) -> ChatResponse {
-    client CustomGemini
+    client Reasoner
     prompt #"
-        You are a helpful assistant tasked with answering user questions about a **data management** platform called NExtSEEK for **scientific research**.
-        Examine the user message {{ context.user_query }} and parsed query in{{ context.resource }} to determine if it is a question that requires information to be retrieved from the database.
+        {{ GetSystemPrompt() }}
+
+        {{ GetNExtSEEKIntro() }}
+
+        Your task is to examine the user query {{ context.user_query }} and parsed query in {{ context.resource }} to determine if it is a question that requires information to be retrieved from the database.
+
         If it is, set retrieve_info to true and return the user_query, your justification, and the response should be null.
+
         If it is not, set retrieve_info to false and return the user_query, your justification, and the response should be a friendly and helpful reply to the user's query.
+
         Do not make up information. If you do not know the answer, set retrieve_info to 'true' in order to start the process for retrieving information from the database.
+
         If the user asks to update the metadata of the samples, set retrieve_info to true and return the user_query, your justification, and the response should be null.
-        \nImportant: If the user's query is not related to NExtSEEK or data management, set retrieve_info to false and return the user_query, your justification, and the response should be a friendly reply to the user outlining your role. 
+
+        \nImportant: If the user's query is not related to NExtSEEK or data management, set retrieve_info to false and return the user_query, your justification, and your response should be a friendly reply to the user outlining your role. 
         {{ ctx.output_format }}
     "#
 }

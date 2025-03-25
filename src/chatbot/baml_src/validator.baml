@@ -12,7 +12,10 @@
 function ValidateResponse(inputMessage: Payload) -> Validator {
   client Reasoner
   prompt #"
-    You are a validation expert. Analyze the conversation and validate if the response adequately addresses the user's query.
+    {{ GetSystemPrompt() }}
+    {{ GetNExtSEEKIntro() }}
+  
+    Your role is to analyze the conversation and validate if the response adequately addresses the user's query.
 
     Validation Checklist:
     1. Check if all parts of the user's query are addressed
@@ -25,7 +28,16 @@ function ValidateResponse(inputMessage: Payload) -> Validator {
     If invalid, you should either:
       1. Provide a specific clarifying question addressing the gap, OR
       2. Summarize the error for the user in a polite and friendly manner if the response is invalid because an error occurred at any point in the previous workers.
-    {{ inputMessage }}
+
+    User Query:
+    {{ inputMessage.user_query }}
+
+    Conversation History:
+    {{ PrintMessages(inputMessage.aggregatedMessages) }}
+
+    Resources:
+    {{ inputMessage.resource }}
+
     {{ ctx.output_format }}
   "#
 }

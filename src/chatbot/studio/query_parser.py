@@ -134,7 +134,8 @@ def query_parser_node(state: ConversationState = INITIAL_STATE) -> Command[Liter
 
 # Example usage:
 if __name__ == "__main__":
-    messages = [HumanMessage(content="Can you tell me more about the sample with UID PAV-220630FLY-1031?", name = "user")]
+    # messages = [HumanMessage(content="Can you tell me more about the sample with UID PAV-220630FLY-1031?", name = "user")]
+    messages = [HumanMessage(content = "Please list all samples with genotype 'RaDR+/+; GPT+/+' that are in cohort 'Water Study'.", name = "user")]
     # messages = [HumanMessage(content="What is the genotype for the mice with these UIDs: 'MUS-220124FOR-1' and 'MUS-220124FOR-73'?", name = "user")]
     # update_messages(INITIAL_STATE, messages[0])
     INITIAL_STATE.messages.extend(messages)

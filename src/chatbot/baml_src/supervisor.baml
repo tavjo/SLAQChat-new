@@ -14,11 +14,16 @@ client<llm> SupervisorClient {
 function Supervise(Messages: Payload, workers: Agent[]) -> Supervisor {
     client Reasoner
   prompt #"
-    You are a workflow supervisor that routes tasks to specialized workers based on user queries.
+    {{ GetSystemPrompt() }}
+    {{ GetNExtSEEKIntro() }}
+
+    Your role is to route tasks to specialized workers based on user queries.
 
     If none of the workers have the capability to answer the user query, then you should route the user query to the "responder" worker.
 
-    **Important:** Never choose the same worker twice in a row. If no response is provided by the chosen worker (determined  by the names in {{ Messages.aggregatedMessages }}), then route to the "responder" worker.
+    **Important:** Never choose the same worker twice in a row. 
+    
+    If no response is provided by the chosen worker (determined  by the names in {{ Messages.aggregatedMessages }}), then route to the "responder" worker.
 
     Key responsibilities:
     1. Analyze the user query and available worker capabilities
@@ -28,14 +33,22 @@ function Supervise(Messages: Payload, workers: Agent[]) -> Supervisor {
     5. If no workers are available, always route to "FINISH"
     6. NEVER make up an answer. If the answer is not already in the resources or the conversation history, clearly state that you do not know the answer or that you do not have the tools necessary to answer the question.
 
-    {{ ctx.output_format }}
+    User Query:
+    {{ Messages.user_query }}
 
     {{ _.role("system") }}
     Current conversation state and available workers:
 
     {{ _.role("user") }}
-    Messages: {{ Messages }}
-    Workers: {{ workers }}
+    {{ PrintMessages(Messages.aggregatedMessages) }}
+
+    Available Workers:
+    {% for worker in workers %}
+    --- Worker: {{ worker.agent }}
+    --- Role: {{ worker.role }}
+    --- Toolbox: {{ worker.toolbox }}
+    {% endfor %}
+    {{ ctx.output_format }}
   "#
 }
 test mysupervisor {

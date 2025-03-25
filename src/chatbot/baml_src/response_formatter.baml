@@ -1,7 +1,9 @@
 function FormatResponse(messages: Payload) -> ResponseFormatter {
 
-    client Reasoner
+    client MyClient
         prompt #"
+    {{ GetSystemPrompt() }}
+    {{ GetNExtSEEKIntro() }}
 
     Format a response using only the provided messages and resources. 
 
@@ -12,7 +14,10 @@ function FormatResponse(messages: Payload) -> ResponseFormatter {
     - Structure the response clearly with bullet points when appropriate
     - If the response contains one or a list of UIDs, format the UIDs as links to the sample page in this way: [UID](https://nextseek.mit.edu/seek/sampletree/uid={UID}).
 
-    {{ messages }}
+     {% if inputMessage.aggregatedMessages %}
+    Conversation History:
+    {{ PrintMessages(messages.aggregatedMessages) }}
+    {% endif %}
     {{ctx.output_format}}
         "#
 }

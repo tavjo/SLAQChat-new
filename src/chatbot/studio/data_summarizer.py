@@ -12,7 +12,7 @@ from typing_extensions import Literal
 from langgraph.types import Command
 from src.chatbot.baml_client.async_client import b as baml
 from src.chatbot.studio.models import ConversationState
-from src.chatbot.studio.helpers import get_resource, update_resource
+from src.chatbot.studio.helpers import get_resource, update_resource, convert_messages
 import asyncio
 from datetime import datetime, timezone
 
@@ -41,10 +41,11 @@ async def data_summarizer_node(state: ConversationState = INITIAL_STATE) -> Comm
     goto = "validator"
     try:
         payload = {
-            "system_message": messages[0].content,
-            "user_query": messages[1].content,
-            "aggregatedMessages": [msg.content for msg in messages],
-            "resource": get_resource(state)
+            # "system_message": messages[0].content,
+            "user_query": messages[0].content,
+            "aggregatedMessages": convert_messages(messages),
+            "resource": get_resource(state),
+            "last_worker": state.last_worker
         }
 
         start_time = time.time()
@@ -53,7 +54,7 @@ async def data_summarizer_node(state: ConversationState = INITIAL_STATE) -> Comm
         try:
             summarize_stream = baml.stream.SummarizeData(payload)
             result = await summarize_stream.get_final_response()
-            logger.debug(f"Summary generated: {result.summary}")
+            logger.info(f"Summary generated: {result.summary}")
             name = "data_summarizer"
             logger.info(f"Agent: {name} | Justification: {result.justification}")
             goto = "response_formatter"

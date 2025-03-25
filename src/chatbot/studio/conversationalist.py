@@ -12,8 +12,8 @@ sys.path.append(project_root)
 from typing_extensions import Literal
 from langgraph.types import Command
 from src.chatbot.baml_client import b as baml
-from src.chatbot.studio.models import ConversationState
-from src.chatbot.studio.helpers import get_resource, update_resource, get_last_worker
+from src.chatbot.studio.models import ConversationState, Payload
+from src.chatbot.studio.helpers import get_resource, update_resource, get_last_worker, convert_messages
 
 from src.chatbot.studio.prompts import (
     INITIAL_STATE
@@ -41,9 +41,9 @@ def conversationalist_node(state: ConversationState) -> Command[Literal["supervi
     last_worker = get_last_worker(state)
     try:
         payload = {
-            "system_message": messages[0].content,
-            "user_query": messages[1].content,
-            "aggregatedMessages": [msg.content for msg in messages],
+            # "system_message": messages[0].content,
+            "user_query": messages[0].content,
+            "aggregatedMessages": convert_messages(messages),
             "resource": get_resource(state),
             "last_worker": last_worker
         }

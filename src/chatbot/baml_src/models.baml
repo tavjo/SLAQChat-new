@@ -5,7 +5,7 @@ class DataSummarizer {
 }
 
 class ToolArgs {
-    key_string string? @description("json_metadata key")
+    json_keys string?|string[]? @description("json_metadata key(s) for the attribute(s) to search")
     terms string[]? @description("terms to search for in the database")
     uid string?|string[]? @description("exact uid of each sample provided by the user")
     sample_type string[]? @description("specific sample type(s) to pass to the tool")
@@ -39,90 +39,22 @@ class Supervisor {
 }
 
 class Metadata {
-    AntibodyParent string?
-    BioSampleAccession string?
-    BiosafetyLevel string?
-    Catalog string?
-    CellCount string?
-    CellLine string?
-    CellLineage string?
-    Checksum_PrimaryData string?
-    Checksum_PrimaryType string?
-    Cohort string?
-    CompensationFCSParent string?
-    Concentration string?
-    ConcentrationUnits string?
-    File_PrimaryData string?
-    Fixation string?
-    Fixative string?
-    FlowAmount string?
-    FlowAmountUnits string?
-    FMO string?
-    Genotype string?
-    Instrument string?
-    InstrumentUser string?
     Link_PrimaryData string?
-    Media string?
     Name string? | int?
-    Notes string?
-    Parent string?
-    PassageNum string?
-    Path_PrimaryData string?
-    Phenotype string?
-    Protocol string?
-    Protocol_Stimulation string?
-    Protocol_Treatment string?
-    Publish_uri string?
-    QC string?
-    QC_notes string?
-    ReagenCatalogNum string?
-    Reagent string?
-    ReagentBrand string?
-    ReagentManufacturer string?
-    Reference string?
-    Repository string?
-    RepositoryID string?
-    Scientist string?
-    SEEKSubmissionDate string?
-    SampleCreationDate string?
-    Software string?
-    Source string?
-    SourceFacility string?
-    Species string?
-    Stain string?
-    StorageLocation string?
-    StorageSite string?
-    StorageTemperature string?
-    StorageTemperatureUnits string?
-    StorageType string?
-    Stimulation string?
-    Study string?
-    Timepoint string?
-    TotalProtein string?
-    TotalProteinUnits string?
-    Treatment1 string?
-    Treatment1Dose string?
-    Treatment1DoseUnits string?
-    Treatment1Reference string?
-    Treatment2 string?
-    Treatment2Dose string?
-    Treatment2DoseUnits string?
-    Treatment2Reference string?
-    TreatmentDoseTime string?
-    TreatmentRoute string?
-    TreatmentTimeUnits string?
-    TreatmentType string?
-    Type string?
-    UID string?
-    ValidationMethod string?
-    ValidationQuality string?
-    Vendor string?
+    UID string
+    @@dynamic // allows adding fields dynamically at runtime
+}
+
+class Messages {
+    name string @description("The name of the sender")
+    message string @description("The message content")
+    role string @description("The role of the sender (i.e. user, assistant)")
 }
 
 class Payload {
-    system_message string @description("The system message")
+    // system_message string @description("The system message")
     user_query string @description("The user message")
-    aggregatedMessages string[]? @description("The aggregated messages in the conversation")
+    aggregatedMessages Messages[] @description("The aggregated messages in the conversation")
     resource ResourceBox? @description("The resources available to the agent")
     last_worker string @description("The last worker that processed the message")
 }
