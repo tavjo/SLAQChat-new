@@ -19,7 +19,7 @@ TOOLSET1 = [get_sample_name, retrieve_sample_info, fetch_protocol, fetchChildren
 TOOLSET2 = [get_metadata_by_uids, get_uids_by_terms_and_field]
 TOOLSET3 = [update_metadata_pipeline, get_st_attributes]
 
-CONFIG = {"recursion_limit": 10,"configurable": {"thread_id": "1"}}
+CONFIG = {"recursion_limit": 20,"configurable": {"thread_id": "1"}}
 
 SYSTEM_MESSAGE = (
     "You are a helpful assistant tasked with answering user questions about a data management platform called NExtSEEK." 

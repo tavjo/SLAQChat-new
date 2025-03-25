@@ -2,7 +2,8 @@
 import streamlit as st
 from dotenv import load_dotenv
 import asyncio
-import sys, os
+import sys, os, base64, io
+# from io import StringIO
 from datetime import datetime, timezone
 import aiohttp  # For async HTTP requests
 import uuid
@@ -22,16 +23,19 @@ output_dir = "assets"  # This folder is no longer used for file storage
 # ---------------------------------------------------------------------------
 
 def check_uploaded_file(uploaded_file):
-    df = uploaded_file.read()
+    # decoded_content = base64.b64decode(uploaded_file.getvalue()).decode('utf-8')
+    # Convert the decoded content to a pandas DataFrame
+    df = pd.read_csv(io.BytesIO(uploaded_file.getvalue()))
     if df.columns[0] != "UID":
         st.error("First column must be UID")
         return False
     return True
 
-async def upload_file_to_backend(uploaded_file):
-    backend_url = "http://backend:8000/upload-csv/"
+async def upload_file_to_backend(uploaded_file, session_id):
+    backend_url = "http://backend:8000/sampleretriever/upload-csv/"
     data = aiohttp.FormData()
     # 'file' is the field name expected by the FastAPI endpoint.
+    data.add_field("session_id", session_id)
     data.add_field(
         "file",
         uploaded_file.getvalue(),  # Get the bytes of the file
@@ -127,10 +131,10 @@ def display_ai_response(result):
         return st.chat_message("assistant").write(error_message)
 
 # ---------------------------------------------------------------------------
-# clear_assets() is no longer needed for file cleanup because we're not saving locally.
-# ---------------------------------------------------------------------------
-def clear_assets():
-    pass
+
+def remove_uploaded_file():
+    # clear the uploaded file from the session state
+    st.session_state.uploaded_file = None
 
 # ---------------------------------------------------------------------------
 # run_all() now integrates the file upload functionality:
@@ -143,11 +147,11 @@ async def run_all():
     uploaded_file, user_input, session_id, version = setup_ui()
     
     # If a file is selected, upload it to the backend
-    upload_result = None
     if uploaded_file is not None and check_uploaded_file(uploaded_file):
         # Await the file upload before processing chat messages
-        upload_result = await upload_file_to_backend(uploaded_file)
+        upload_result = await upload_file_to_backend(uploaded_file, session_id)
         # Optionally, you can check 'upload_result' for further processing or error handling.
+        remove_uploaded_file()
     
     # Process the chat input if provided
     if user_input and session_id:
@@ -155,7 +159,6 @@ async def run_all():
         with st.spinner('Thinking...'):
             result = await run_agent_chatbot(user_input, session_id, version)
         display_ai_response(result)
-    clear_assets()
 
 if __name__ == "__main__":
     asyncio.run(run_all())

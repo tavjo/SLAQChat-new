@@ -112,7 +112,7 @@ def get_input_data(file_data: InputCSV) -> pd.DataFrame:
 
 # @async_wrap
 @timer_wrap
-async def check_attributes(st_attributes: pd.DataFrame) -> pd.DataFrame:
+async def check_attributes(st_attributes: pd.DataFrame, file_data: InputCSV) -> pd.DataFrame:
     """
     Verifies that attributes in the input file exist in the database for each sample type.
     
@@ -124,7 +124,7 @@ async def check_attributes(st_attributes: pd.DataFrame) -> pd.DataFrame:
     """
     ##ENSURE Attributes you want to update exist in the DB. 1 == exist, 0 == dont exist
 
-    input = await get_input_data()
+    input = await get_input_data(file_data)
 
     # Step 1: Get unique SampleTypes
     unique_sample_types = input["SampleType"].unique()
@@ -409,7 +409,7 @@ async def update_metadata_pipeline(file_data: InputCSV) -> UpdatePipelineMetadat
         
         # Check if attributes you want to update exist in the DB
         logger.info("Checking if attributes exist in the DB")
-        attributes_to_check = await check_attributes(st_attributes)
+        attributes_to_check = await check_attributes(st_attributes, file_data)
         
         # Removes samples from input who have 0's in the attributes_to_check
         logger.info("Filtering samples with missing attributes")
@@ -462,9 +462,10 @@ async def update_metadata_pipeline(file_data: InputCSV) -> UpdatePipelineMetadat
 if __name__ == "__main__":
     result = asyncio.run(update_metadata_pipeline())
         # Optionally print logs
-    if result["logs"]:
-        print("\nExecution logs:")
-        for log in result["logs"]:
-            print(log)
+    # if result["logs"]:
+    #     print("\nExecution logs:")
+    #     for log in result["logs"]:
+    #         print(log)
     # res = asyncio.run(update_metadata_pipeline())
+    # print(res)
     # print(res[:10])

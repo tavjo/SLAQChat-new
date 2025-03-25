@@ -45,7 +45,7 @@ conversation_store = {}
 # In-memory store for uploaded CSV files: session_id -> InputCSV
 csv_store = {}
 
-@router.post("/upload-csv", response_model=InputCSV)
+@router.post("/upload-csv/", response_model=InputCSV)
 async def upload_csv(
     session_id: str = Form(...),
     file: UploadFile = File(...)
@@ -75,7 +75,7 @@ async def upload_csv(
 
 
 
-@router.post("/invoke", response_model=List[dict])
+@router.post("/invoke/", response_model=List[dict])
 async def invoke_sample_retriever_graph(delta: DeltaMessage, request: Request) -> List[dict]:
     """
     Invoke the pre-compiled multi-agent graph using the provided conversation state.
@@ -133,9 +133,9 @@ async def invoke_sample_retriever_graph(delta: DeltaMessage, request: Request) -
         # If a CSV has been uploaded for this session, attach its reference.
         if session_id in csv_store:
             new_state.file_data = csv_store[session_id]
-            logger.info(f"Attached CSV file (ID: {csv_store[session_id].file_id}) to conversation state for session {session_id}")
+            logger.info(f"Attached CSV file (ID: {csv_store[session_id].file_data}) to conversation state for session {session_id}")
             # Optionally, remove the CSV from csv_store after attaching if you want one-time use.
-            del csv_store[session_id]
+            # del csv_store[session_id]
 
         # Save updated state back to the in-memory store.
         conversation_store[session_id] = new_state
@@ -157,6 +157,12 @@ async def invoke_sample_retriever_graph(delta: DeltaMessage, request: Request) -
             json_serializable_messages = [message_to_dict(msg) for msg in result["messages"]]
             logger.debug(f"Successfully serialized {len(json_serializable_messages)} messages")
             logger.debug(f"Serialized messages: {json_serializable_messages}")
+
+            # Clear the CSV file from the conversation state after response.
+            if session_id in csv_store:
+                del csv_store[session_id]
+            new_state.file_data = None
+            conversation_store[session_id] = new_state
             return json_serializable_messages
         except Exception as serialization_error:
             logger.error(f"Error serializing messages: {serialization_error}")
