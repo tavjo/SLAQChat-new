@@ -13,7 +13,7 @@ from typing_extensions import Literal
 from langgraph.types import Command
 from src.chatbot.baml_client import b as baml
 from src.chatbot.studio.models import ConversationState, ResourceBox
-from src.chatbot.studio.helpers import get_resource, get_last_worker
+from src.chatbot.studio.helpers import get_resource, get_last_worker, convert_messages
 from src.chatbot.studio.prompts import INITIAL_STATE
 
 # Configure logger
@@ -40,9 +40,9 @@ def validator_node(state: ConversationState = INITIAL_STATE) -> Command[Literal[
     last_worker = get_last_worker(state)
     try:
         payload = {
-            "system_message": messages[0].content,
+            # "system_message": messages[0].content,
             "user_query": [msg.content for msg in messages if msg.name == "user"][0],
-            "aggregatedMessages": [msg.content for msg in messages],
+            "aggregatedMessages": convert_messages(messages),
             "resource": get_resource(state),
             "last_worker": last_worker
         }

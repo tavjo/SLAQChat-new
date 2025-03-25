@@ -12,7 +12,7 @@ sys.path.append(project_root)
 from typing_extensions import Literal
 from langgraph.types import Command
 from src.chatbot.studio.models import ConversationState
-from src.chatbot.studio.helpers import get_resource, get_available_workers, update_available_workers, get_last_worker
+from src.chatbot.studio.helpers import get_resource, get_available_workers, update_available_workers, get_last_worker, convert_messages
 
 from src.chatbot.studio.prompts import (
     WORK_GROUP_A,
@@ -56,9 +56,9 @@ def supervisor_node(state: ConversationState = INITIAL_STATE) -> Command[Literal
         logger.info("Creating payload for supervision...")
         try:
             payload = {
-                "system_message": messages[0].content,
-                "user_query": messages[1].content,
-                "aggregatedMessages": [msg.content for msg in messages],
+                # "system_message": messages[0].content,
+                "user_query": messages[0].content,
+                "aggregatedMessages": convert_messages(messages),
                 "resource": get_resource(state),
                 "last_worker": last_worker
             }

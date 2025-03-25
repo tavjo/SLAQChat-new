@@ -324,9 +324,9 @@ async def async_navigator_handler(
         last_worker = get_last_worker(state)
 
         payload = {
-        "system_message": messages[0].content,
-        "user_query": messages[1].content,
-        "aggregatedMessages": [msg.content for msg in messages],
+        # "system_message": messages[0].content,
+        "user_query": messages[0].content,
+        "aggregatedMessages": convert_messages(messages),
         "resource": get_resource(state),
         "last_worker": last_worker
         }
