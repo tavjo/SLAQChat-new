@@ -159,6 +159,8 @@ async def run_all():
         with st.spinner('Thinking...'):
             result = await run_agent_chatbot(user_input, session_id, version)
         display_ai_response(result)
+        # Remove the uploaded file from the session state after processing the chat input
+    return remove_uploaded_file()
 
 if __name__ == "__main__":
     asyncio.run(run_all())

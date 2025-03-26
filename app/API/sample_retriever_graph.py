@@ -133,7 +133,7 @@ async def invoke_sample_retriever_graph(delta: DeltaMessage, request: Request) -
         # If a CSV has been uploaded for this session, attach its reference.
         if session_id in csv_store:
             new_state.file_data = csv_store[session_id]
-            logger.info(f"Attached CSV file (ID: {csv_store[session_id].file_data}) to conversation state for session {session_id}")
+            logger.info(f"Attached CSV file (ID: {csv_store[session_id].file_id}) to conversation state for session {session_id}")
             # Optionally, remove the CSV from csv_store after attaching if you want one-time use.
             # del csv_store[session_id]
 
