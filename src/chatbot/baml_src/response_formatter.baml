@@ -14,10 +14,17 @@ function FormatResponse(messages: Payload) -> ResponseFormatter {
     - Structure the response clearly with bullet points when appropriate
     - If the response contains one or a list of UIDs, format the UIDs as links to the sample page in this way: [UID](https://nextseek.mit.edu/seek/sampletree/uid={UID}).
 
-     {% if inputMessage.aggregatedMessages %}
+    User Query:
+    {{ messages.user_query }}
+
+    {% if messages.aggregatedMessages %}
     Conversation History:
     {{ PrintMessages(messages.aggregatedMessages) }}
     {% endif %}
+
+    Resources:
+    {{ messages.resource }}
+
     {{ctx.output_format}}
         "#
 }

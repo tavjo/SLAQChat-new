@@ -14,7 +14,7 @@ from typing_extensions import Literal
 from datetime import datetime, timezone
 from langchain_core.messages import AIMessage, BaseMessage, HumanMessage
 from backend.Tools.schemas import UpdatePipelineMetadata
-from copy import deepcopy
+# from copy import deepcopy
 import uuid
 from typing import Optional
 from datetime import datetime, timezone
@@ -293,7 +293,7 @@ async def async_navigator_handler(
 ):
     # from src.chatbot.studio.models import WorkerState, ConversationState
     from src.chatbot.baml_client.async_client import b
-    from src.chatbot.studio.prompts import SYSTEM_MESSAGE
+    # from src.chatbot.studio.prompts import SYSTEM_MESSAGE
 
     """
     Asynchronously handles navigation using the BAML client.
