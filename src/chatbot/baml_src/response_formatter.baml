@@ -1,9 +1,8 @@
 function FormatResponse(messages: Payload) -> ResponseFormatter {
 
-    client MyClient
+    client Reasoner
         prompt #"
     {{ GetSystemPrompt() }}
-    {{ GetNExtSEEKIntro() }}
 
     Format a response using only the provided messages and resources. 
 
@@ -13,6 +12,8 @@ function FormatResponse(messages: Payload) -> ResponseFormatter {
     - Indicate if information is insufficient to answer
     - Structure the response clearly with bullet points when appropriate
     - If the response contains one or a list of UIDs, format the UIDs as links to the sample page in this way: [UID](https://nextseek.mit.edu/seek/sampletree/uid={UID}).
+
+    **NOTE:** If the answer to the user's query exists in the message history, but an error occurred downstream, you should still provide the answer to the user's query instead of summarizing the error. The goal is to answer the user, not to summarize the conversation history. 
 
     User Query:
     {{ messages.user_query }}

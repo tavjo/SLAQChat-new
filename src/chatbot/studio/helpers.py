@@ -16,7 +16,7 @@ from langchain_core.messages import AIMessage, BaseMessage, HumanMessage
 from backend.Tools.schemas import UpdatePipelineMetadata
 # from copy import deepcopy
 import uuid
-from typing import Optional
+from typing import Optional, Union
 from datetime import datetime, timezone
 logger = logging.getLogger(__name__)
 
@@ -54,6 +54,19 @@ def default_resource_box() -> ResourceBox:
         st_attributes=[SampleTypeAttributes(sampletype="", st_description="", attributes=[])],
         update_info=UpdatePipelineMetadata(success=False, logs=[], errors=None, stats={})
     )
+
+def transform_response_to_metadata(response_data) -> list[Metadata]:
+    result = []
+    
+    # Handle the outer list structure
+    for item in response_data:
+        # Each item is a dictionary with UIDs as keys
+        for uid, metadata_dict in item.items():
+            # Create a Metadata object from each inner dictionary
+            metadata_obj = Metadata.model_validate(metadata_dict)
+            result.append(metadata_obj)
+    
+    return result
 
 def populate_update_info(update_info: dict) -> UpdatePipelineMetadata:
     return UpdatePipelineMetadata.model_validate(update_info)
@@ -164,7 +177,7 @@ def get_resource(state: ConversationState) -> ResourceBox:
     return state.resources
 
 # Helper function to update the resource information.
-def update_resource(state: ConversationState, new_resource: dict) -> None:
+def update_resource(state: ConversationState, new_resource: Union[dict, list[dict]]) -> None:
     from src.chatbot.studio.models import ResourceBox
     """
     Merge new resource data into the state's resources.

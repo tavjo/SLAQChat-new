@@ -15,7 +15,7 @@ from src.chatbot.studio.helpers import update_resource, get_resource, async_navi
 import asyncio
 from langchain_core.messages import HumanMessage, AIMessage
 from src.chatbot.studio.models import ConversationState, ToolResponse, ResourceBox, DBSchema, Table, Column, ParsedQuery
-from src.chatbot.studio.helpers import create_tool_call_node 
+from src.chatbot.studio.helpers import create_tool_call_node, transform_response_to_metadata
 from langgraph.types import Command
 from typing_extensions import Literal
 # from datetime import datetime, timezone
@@ -67,6 +67,8 @@ async def multi_sample_info(state: ConversationState = INITIAL_STATE)->ToolRespo
             tool_args = (tool_args.uid)
             logger.info(f"Executing {next_tool} with args: {tool_args}")
             result = await TOOL_DISPATCH[next_tool](tool_args)
+            result = transform_response_to_metadata(result)
+            result = [i.model_dump() for i in result]
         elif next_tool == "get_uids_by_terms_and_field":
             resource_type = "UIDs"
             tool_args = (tool_args.json_keys, tool_args.terms)

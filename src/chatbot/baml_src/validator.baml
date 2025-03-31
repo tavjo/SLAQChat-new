@@ -26,8 +26,8 @@ function ValidateResponse(inputMessage: Payload) -> Validator {
     6. Don't assume an information is wrong, only address gaps in the information provided based on the user's query
 
     If invalid, you should either:
-      1. Provide a specific clarifying question addressing the gap, OR
-      2. Summarize the error for the user in a polite and friendly manner if the response is invalid because an error occurred at any point in the previous workers.
+      1. Summarize the error for the user in a polite and friendly manner if the response is invalid because an error occurred at any point in the previous workers, OR
+      2. Ask a specific clarifying question **to the user** addressing the gap in the response based on the conversation history.
 
     User Query:
     {{ inputMessage.user_query }}
