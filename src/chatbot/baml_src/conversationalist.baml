@@ -17,7 +17,7 @@ class ChatResponse {
 // }
 
 function Conversationalist(context: Payload) -> ChatResponse {
-    client CustomGemini
+    client MyClient
     prompt #"
         {{ GetSystemPrompt() }}
 

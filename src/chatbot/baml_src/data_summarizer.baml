@@ -1,6 +1,6 @@
 
 function SummarizeData(inputMessage: Payload) -> DataSummarizer {
-    client Reasoner
+    client MyClient
     prompt #"
       {{ GetSystemPrompt() }}
       {{ GetNExtSEEKIntro() }}

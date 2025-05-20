@@ -1,5 +1,5 @@
 function RetrieveSchema(user_query: string, db_schema: DBSchema, parsed_query: ParsedQuery) -> SchemaMapper {
-    client Reasoner
+    client MyClient
     prompt #"
         {{ GetSystemPrompt() }}
         {{ GetNExtSEEKIntro() }}

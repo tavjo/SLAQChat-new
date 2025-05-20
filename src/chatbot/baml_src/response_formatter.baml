@@ -1,6 +1,6 @@
 function FormatResponse(messages: Payload) -> ResponseFormatter {
 
-    client Reasoner
+    client MyClient
         prompt #"
     {{ GetSystemPrompt() }}
 

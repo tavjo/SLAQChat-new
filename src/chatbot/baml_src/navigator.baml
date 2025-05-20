@@ -10,7 +10,7 @@
 // }
 
 function Navigate(agent: Agent, payload: Payload) -> Navigator {
-    client Reasoner
+    client MyClient
     prompt #"
 
     {{ GetSystemPrompt() }}
