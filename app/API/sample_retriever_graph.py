@@ -13,9 +13,13 @@ from datetime import datetime, timezone
 project_root = os.path.abspath(os.path.join(os.path.dirname(__file__), "../.."))
 sys.path.append(project_root)
 
+from src.chatbot.studio.helpers import handle_user_queries, initialize_logging
+
+filename = os.path.basename(__file__)
+logger = initialize_logging(log_file = filename)
+
 # from src.chatbot.studio.sample_retriever import initialize_graph
 from src.chatbot.studio.models import DeltaMessage, InputCSV
-from src.chatbot.studio.helpers import handle_user_queries
 from src.chatbot.studio.prompts import INITIAL_STATE, CONFIG
 load_dotenv()
 os.environ["OPENAI_API_KEY"] = os.getenv("OPENAI_API_KEY")

@@ -17,7 +17,7 @@ class ChatResponse {
 // }
 
 function Conversationalist(context: Payload) -> ChatResponse {
-    client Reasoner
+    client CustomGemini
     prompt #"
         {{ GetSystemPrompt() }}
 

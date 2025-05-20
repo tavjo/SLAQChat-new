@@ -26,6 +26,12 @@ from src.chatbot.studio.conversationalist import conversationalist_node
 from src.chatbot.studio.query_parser import query_parser_node
 from src.chatbot.studio.prompts import INITIAL_STATE
 from src.chatbot.studio.update_records import archivist_node
+from src.chatbot.studio.helpers import initialize_logging
+
+# initialize logging
+filename = os.path.basename(__file__)
+logger = initialize_logging(log_file = filename)
+
 # import env variables
 from dotenv import load_dotenv
 load_dotenv()

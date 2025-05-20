@@ -18,6 +18,23 @@ from backend.Tools.schemas import UpdatePipelineMetadata
 import uuid
 from typing import Optional, Union
 from datetime import datetime, timezone
+
+project_root = os.path.abspath(os.path.join(os.path.dirname(__file__), '../../..'))
+# sys.path.append(project_root)
+
+# Ensure the logs directory exists before setting up FileHandler
+logs_dir_path = os.path.join(project_root, 'logs')
+os.makedirs(logs_dir_path, exist_ok=True)
+
+# Configure logging
+logging.basicConfig(
+    level=logging.INFO,
+    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
+    handlers=[
+        logging.StreamHandler(),
+        logging.FileHandler(os.path.join(logs_dir_path, 'helpers.log'), 'a')
+    ]
+)
 logger = logging.getLogger(__name__)
 
 ########################################################
@@ -650,6 +667,29 @@ def handle_user_queries(user_query: str, state: ConversationState) -> Optional[C
         logger.error(f"Error in handle_user_queries: {str(e)}", exc_info=True)
         # Return None to indicate error, caller should handle this case
         return None
+
+def initialize_logging(log_file: str, project_root: str = project_root):
+    # Configure logging
+    os.makedirs(os.path.join(project_root, 'logs'), exist_ok=True)
+
+    # Set up logging configuration
+    log_filename = log_file.split(".")[0]
+    log_file = os.path.join(project_root, 'logs', f"{log_filename}.log")
+    file_handler = logging.FileHandler(log_file, mode='a')
+    file_handler.setFormatter(logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s'))
+    console_handler = logging.StreamHandler()
+    console_handler.setFormatter(logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s'))
+
+    # Configure root logger
+    root_logger = logging.getLogger()
+    root_logger.setLevel(logging.INFO)
+    root_logger.addHandler(file_handler)
+    root_logger.addHandler(console_handler)
+
+    logger = logging.getLogger(__name__)
+    logger.info(f"Logging initialized for {log_file}")
+    return logger
+
 
 # Example usage:
 # (Make sure to run this inside an async event loop)

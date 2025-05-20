@@ -69,3 +69,8 @@ backend/database/impact_statistics.ipynb
 /src/chatbot/query_tools_chat.ipynb
 state_db/
 backend/database/dmac_schema.sql
+
+backend/database/full_schema.sql
+backend/database/
+
+logs/
