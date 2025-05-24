@@ -46,9 +46,43 @@ def query_parser_node(state: ConversationState = INITIAL_STATE) -> Command[Liter
     try:
         logger.info("Creating payload for query parsing")
 
+        # Find the most recent HumanMessage (user query) instead of assuming it's messages[0]
+        most_recent_user_query = None
+        most_recent_user_message = None
+        most_recent_user_index = None
+        
+        for i, message in enumerate(reversed(messages)):  # Iterate from most recent to oldest
+            if isinstance(message, HumanMessage):
+                most_recent_user_query = message.content
+                most_recent_user_message = message
+                most_recent_user_index = len(messages) - 1 - i  # Convert back to original index
+                break
+        
+        if most_recent_user_query is None:
+            logger.error("No user query found in messages")
+            raise ValueError("No HumanMessage found in conversation state")
+
+        logger.info(f"Found most recent user query: {most_recent_user_query}")
+
+        # Restructure messages list so that the most recent user query is at index 0
+        if most_recent_user_index != 0:
+            # Remove the most recent user message from its current position
+            messages_copy = messages.copy()
+            most_recent_message = messages_copy.pop(most_recent_user_index)
+            # Insert it at the beginning
+            restructured_messages = [most_recent_message] + messages_copy
+            logger.info(f"Restructured messages list: moved user query from index {most_recent_user_index} to index 0")
+        else:
+            # Already at index 0, no restructuring needed
+            restructured_messages = messages
+            logger.info("Most recent user query already at index 0, no restructuring needed")
+        
+        # Update the state with restructured messages
+        messages = restructured_messages
+
         payload = {
             # "system_message": messages[0].content,
-            "user_query": messages[0].content,
+            "user_query": messages[0].content,  # Now guaranteed to be the most recent user query
             "aggregatedMessages": convert_messages(messages),
             "resource": get_resource(state),
             "last_worker": last_worker

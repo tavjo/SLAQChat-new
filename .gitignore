@@ -74,3 +74,5 @@ backend/database/full_schema.sql
 backend/database/
 
 logs/
+
+documentations/

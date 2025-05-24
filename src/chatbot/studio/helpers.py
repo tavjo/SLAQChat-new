@@ -574,7 +574,7 @@ def flatten_user_queries(state: ConversationState, session_id: str, timestamp: d
         # Sort user messages by timestamp
         try:
             sorted_user_messages = sorted(user_messages.values(), 
-                                          key=lambda x: datetime.fromisoformat(x.id.split("_")[-1]))
+                                          key=lambda x: datetime.fromisoformat(x.id.split("_")[0]))
         except Exception as e:
             logger.error(f"Error sorting messages: {str(e)}")
             # Fall back to unsorted messages if sorting fails
@@ -590,7 +590,7 @@ def flatten_user_queries(state: ConversationState, session_id: str, timestamp: d
                 messages.remove(msg)
         
         # Add new user message to state
-        new_msg_id = f"{session_id}_{timestamp.isoformat()}"
+        new_msg_id = f"{timestamp.isoformat()}_{session_id}"
         messages.append(HumanMessage(content=flattened_user_query, name="user", id=new_msg_id))
         logger.info(f"Successfully flattened {len(sorted_user_messages)} messages into one with ID {new_msg_id}")
         logger.info(f"Updated messages: {messages}")
@@ -644,7 +644,7 @@ def handle_user_queries(user_query: str, state: ConversationState) -> Optional[C
         )
         logger.info("Fresh state created.")
         # Create and add the user message
-        msg_id = f"{session_id}_{timestamp.isoformat()}"
+        msg_id = f"{timestamp.isoformat()}_{session_id}"
         user_message = HumanMessage(content=user_query, name="user", id=msg_id)
         fresh_state.messages.append(user_message)
         
